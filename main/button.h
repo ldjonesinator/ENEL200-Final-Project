@@ -1,6 +1,8 @@
 #ifndef BUTTON_H
 #define BUTTON_H
 
+#include <Arduino.h>
+#include <stdint.h>
 //#include ----
 
 typedef enum {
@@ -21,7 +23,7 @@ Button initButton(String name);                                             // i
 
 void updateButton();                                            // ????
 
-Clicked buttonsPressed(Button leftButt, Button rightButt)                   // checks what button/s are being clicked
+Clicked buttonsPressed(Button leftButt, Button rightButt);                   // checks what button/s are being clicked
 
 void doClick(Clicked buttClicked);                                          // enum thing from buttonPressed
 

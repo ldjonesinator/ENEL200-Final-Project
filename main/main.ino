@@ -25,7 +25,13 @@ Level moistureLevel;
 Level lightLevel;
 Level temperatureLevel;
 
-Level getLevel() {
+void reset()            // resets the entire system
+{
+  currentState = SETUP;
+}
+
+Level getLevel()
+{
   char choice;
   Level currentLevel = LOWER;
 

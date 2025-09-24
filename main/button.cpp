@@ -1,6 +1,6 @@
 #include "button.h"
 
-Button initButton(name)                                                     // initalises button
+Button initButton(String name)                                                     // initalises button
 {
     Button button {
         name,
@@ -16,7 +16,7 @@ void updateButton()
     // maybe call buttonsPressed?
 }
 
-Clicked buttonsPressed(leftButt, rightButt)                                 // checks what button/s are being clicked
+Clicked buttonsPressed(Button leftButt, Button rightButt)                                 // checks what button/s are being clicked
 {
     // due to coding, theres 100ms 'delay' between button clicked and anything updating (LCD)
     // button will be either HIGH or LOW
@@ -27,9 +27,11 @@ Clicked buttonsPressed(leftButt, rightButt)                                 // c
     static uint64_t newTime = millis();                                     // gets the time - does this have to be static?
     static bool leftPressed;                                                // do these have to be static?
     static bool rightPressed;
+    static bool isButtonPressed = false;
+    static uint64_t startTime;
     
     if ((leftButt.pressed || rightButt.pressed) && !isButtonPressed) {
-        static uint64_t startTime = newTime;                                // starts the timer - does this have to be static?
+        startTime = newTime;                                                // starts the timer - does this have to be static?
         isButtonPressed = true;
         if (leftButt.pressed) {
             leftPressed = true;
@@ -40,7 +42,7 @@ Clicked buttonsPressed(leftButt, rightButt)                                 // c
         }
     }
 
-    timepassed = newTime - startTime
+    uint64_t timepassed = newTime - startTime;
     if (timepassed < 100) {
         // check if the other button has been pressed
         if (leftPressed) {
@@ -97,6 +99,6 @@ void doClick(buttClicked)                                                   // e
             // call other error function maybe???           // ????
         case 3:                                                             // BOTH
             reset();                                                        // calls function to reset the system
-    }
+    }                                                       // reset just needs to set the state to SETUP
 }
 
