@@ -3,6 +3,8 @@
 #include <hd44780.h>
 #include <hd44780ioClass/hd44780_I2Cexp.h>
 
+
+
 const int LCD_COLS = 16;
 const int LCD_ROWS = 2;
 static int stringIndexes[LCD_ROWS];
@@ -27,7 +29,8 @@ void lcd_setup(const hd44780_I2Cexp* lcd, bool backlight) {
 bool lcd_write(const hd44780_I2Cexp* lcd, String text, int line) {
   // returns if the line is too long and puts up to the first 16 characters of a string on an LCD
   bool islong;
-  
+  lcd->setCursor(0, line);
+  lcd->print("                ");
   if (text.length() > LCD_COLS) { // line too long
     lcd->setCursor(0, line);
     lcd->print(text.substring(0, 16));

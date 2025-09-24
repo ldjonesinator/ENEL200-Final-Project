@@ -1,3 +1,10 @@
+#include "lcd.h"
+#include <Wire.h>
+#include <hd44780.h>
+#include <hd44780ioClass/hd44780_I2Cexp.h>
+
+hd44780_I2Cexp lcd;
+
 typedef enum {
   SETUP,
   IDLE,
@@ -22,8 +29,8 @@ Level getLevel() {
   char choice;
   Level currentLevel = LOWER;
 
-  Serial.print(levelNames[currentLevel]);
-  Serial.println("?");
+  //Serial.print(levelNames[currentLevel]);
+  lcd_write(&lcd, levelNames[currentLevel], 1);
 
   while (1) {
     if (Serial.available()) {
@@ -35,8 +42,8 @@ Level getLevel() {
         if (currentLevel >= numLevels) {
           currentLevel = LOWER;
         }
-        Serial.print(levelNames[currentLevel]);
-        Serial.println("?");
+        //Serial.print(levelNames[currentLevel]);
+        lcd_write(&lcd, levelNames[currentLevel], 1);
       }
     }
   }
@@ -44,23 +51,27 @@ Level getLevel() {
 
 void setup() {
   Serial.begin(9600);
+  lcd_setup(&lcd, true);
   currentState = SETUP;
 }
 
 void loop() {
   switch (currentState) {
     case SETUP:
-      Serial.println("How much soil moisture does your plant need?"); // these messages will eventually be displayed on the LCD
+      //Serial.println("How much soil moisture does your plant need?"); // these messages will eventually be displayed on the LCD
+      lcd_write(&lcd, "Soil moisture?", 0);
       moistureLevel = getLevel();
       Serial.print("Soil moisture set to: ");
       Serial.println(levelNames[moistureLevel]);
 
-      Serial.println("How much light does your plant need?");
+      //Serial.println("How much light does your plant need?");
+      lcd_write(&lcd, "Light level?", 0);
       lightLevel = getLevel();
       Serial.print("Light level set to: ");
       Serial.println(levelNames[lightLevel]);
 
-      Serial.println("How much warmth does your plant need?");
+      //Serial.println("How much warmth does your plant need?");
+      lcd_write(&lcd, "Warmth?", 0);
       temperatureLevel = getLevel();
       Serial.print("Warmth set to: ");
       Serial.println(levelNames[temperatureLevel]);
