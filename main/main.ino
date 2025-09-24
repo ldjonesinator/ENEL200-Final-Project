@@ -1,14 +1,14 @@
-enum State {
+typedef enum {
   SETUP,
   IDLE,
   ERROR
-};
+} State;
 
-enum Level {
-  LOW = 0,
+typedef enum {
+  LOWER,
   MEDIUM,
-  HIGH
-};
+  HIGHER
+} Level;
 
 const char* levelNames[] = {"Low", "Medium", "High"};
 const int numLevels = 3;
@@ -20,10 +20,10 @@ Level temperatureLevel;
 
 Level getLevel() {
   char choice;
-  Level currentLevel = LOW;
+  Level currentLevel = LOWER;
   while (1) {
     if (currentLevel >= numLevels) {
-      currentLevel = LOW;
+      currentLevel = LOWER;
     }
 
     Serial.print(levelNames[currentLevel]);
@@ -51,17 +51,17 @@ void loop() {
       Serial.println("How much soil moisture does your plant need?"); // these messages will eventually be displayed on the LCD
       moistureLevel = getLevel();
       Serial.print("Soil moisture set to: ");
-      Serial.println(LevelNames[moistureLevel]);
+      Serial.println(levelNames[moistureLevel]);
 
       Serial.println("How much light does your plant need?");
       lightLevel = getLevel();
       Serial.print("Light level set to: ");
-      Serial.println(LevelNames[lightLevel]);
+      Serial.println(levelNames[lightLevel]);
 
       Serial.println("How much warmth does your plant need?");
       temperatureLevel = getLevel();
       Serial.print("Warmth set to: ");
-      Serial.println(LevelNames[temperatureLevel]);
+      Serial.println(levelNames[temperatureLevel]);
 
       currentState = IDLE;
       break;
