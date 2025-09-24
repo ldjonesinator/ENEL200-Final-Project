@@ -21,20 +21,22 @@ Level temperatureLevel;
 Level getLevel() {
   char choice;
   Level currentLevel = LOWER;
+
+  Serial.print(levelNames[currentLevel]);
+  Serial.println("?");
+
   while (1) {
-    if (currentLevel >= numLevels) {
-      currentLevel = LOWER;
-    }
-
-    Serial.print(levelNames[currentLevel]);
-    Serial.println("?");
-
     if (Serial.available()) {
       choice = Serial.read(); // this will eventually be a button that the user presses
       if (choice == 'y') { // 'y' means YES
         return currentLevel;
-      } else {
+      } else if (choice == 'n') {
         currentLevel = (Level)(currentLevel + 1);
+        if (currentLevel >= numLevels) {
+          currentLevel = LOWER;
+        }
+        Serial.print(levelNames[currentLevel]);
+        Serial.println("?");
       }
     }
   }
