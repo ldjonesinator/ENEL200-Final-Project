@@ -3,6 +3,6 @@
 
 //#include ---
 
-void updateLED(uint8_t ledPin);
+void updateLED(uint8_t ledPin, bool timeDay, bool isError);
 
 #endif //LED_H
