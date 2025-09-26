@@ -2,6 +2,7 @@
 
 #include "button.h"
 
+const uint32_t longPress_TIME = 3000; // 3 seconds
 const uint8_t MAX_BUTTONS = 10;
 static Button* allButtons[MAX_BUTTONS];
 static uint8_t numButtons = 0;
@@ -31,6 +32,7 @@ void initialise_button(Button* button, String label) {
     // sets the button label, puts button in default state and registers it
     button->label = label;
     button->pressed = false;
+    button->longPress = false;
     register_button(button);
 }
 
@@ -49,3 +51,15 @@ void update_button(String label, bool isPressed) {
         i ++;
     }
 }
+
+void update_longPresses() {
+    // checks every button to see if its been long pressed
+    for (size_t i = 0; i < numButtons; i ++) {
+        if (allButtons[i]->pressed && millis() - allButtons[i]->startTime >= longPress_TIME) {
+            allButtons[i]->longPress = true;
+        } else {
+            allButtons[i]->longPress = false;
+        }
+    }
+}
+

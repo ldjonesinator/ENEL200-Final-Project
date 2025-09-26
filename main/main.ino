@@ -1,14 +1,22 @@
-#include "lcd.h"
 #include <Wire.h>
 #include <hd44780.h>
 #include <hd44780ioClass/hd44780_I2Cexp.h>
 
+#include "lcd.h"
+#include "button.h"
+#include "led.h"
+
 #define LED 4
+#define LEFT_BUTTON_PIN 3 // change the pin to whatever the schematic is
+#define RIGHT_BUTTON_PIN 2 // change the pin to whatever the schematic is
+
 #define LIGHT A0
 #define MOISTURE A1
 #define TEMPERATURE A2
 
 hd44780_I2Cexp lcd;
+Button leftBut;
+Button rightBut;
 
 typedef enum {
   SETUP,
@@ -73,17 +81,23 @@ Level getLevel()
   lcd_write(&lcd, levelNames[currentLevel], 1);
 
   while (1) {
-    if (Serial.available()) {
-      choice = Serial.read(); // this will eventually be a button that the user presses
-      if (choice == 'y') { // 'y' means YES
-        return currentLevel;
-      } else if (choice == 'n') {
-        currentLevel = (Level)(currentLevel + 1);
+    if (digitalRead(LEFT_BUTTON_PIN) == HIGH && !leftBut.pressed) { // when you select the option
+      update_button("L", HIGH);
+    } else if (digitalRead(LEFT_BUTTON_PIN) == LOW && leftBut.pressed) {
+      update_button("L", LOW);
+      return currentLevel;
+    }
+
+    // cycling through options
+    if (digitalRead(RIGHT_BUTTON_PIN) == HIGH && !rightBut.pressed) {
+      update_button("R", HIGH);
+    } else if (digitalRead(RIGHT_BUTTON_PIN) == LOW && rightBut.pressed) {
+      update_button("R", LOW);
+      currentLevel = (Level)(currentLevel + 1);
         if (currentLevel >= numLevels) {
           currentLevel = LOWER;
         }
         lcd_write(&lcd, levelNames[currentLevel], 1);
-      }
     }
   }
 }
@@ -122,8 +136,15 @@ void checkForError() {
 
 void setup() {
   Serial.begin(9600);
+
   lcd_setup(&lcd, true);
   pinMode(LED, OUTPUT);
+
+  pinMode(LEFT_BUTTON_PIN, INPUT);
+  pinMode(RIGHT_BUTTON_PIN, INPUT);
+  initialise_button(&leftBut, "L");
+  initialise_button(&rightBut, "R");
+
   currentState = SETUP;
 }
 
@@ -154,15 +175,15 @@ void loop() {
       break;
 
     case IDLE:
-      unsigned long currentTime = millis();
-      if (currentTime - startTime >= SENSOR_CHECK_INTERVAL) {
-        checkSensors();
-        lastSensorCheckTime = millis();
-      } else if (currentTime - lastErrorCheckTime >= ERROR_CHECK_INTERVAL) {
-        checkForError();
-        lastErrorCheckTime = millis();
-      }
-      break;
+      // unsigned long currentTime = millis();
+      // if (currentTime - startTime >= SENSOR_CHECK_INTERVAL) {
+      //   checkSensors();
+      //   lastSensorCheckTime = millis();
+      // } else if (currentTime - lastErrorCheckTime >= ERROR_CHECK_INTERVAL) {
+      //   checkForError();
+      //   lastErrorCheckTime = millis();
+      // }
+      // break;
 
     case ERROR:
       digitalWrite(LED, HIGH);

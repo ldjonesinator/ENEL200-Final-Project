@@ -14,11 +14,13 @@
 typedef struct {
     String label;
     bool pressed;
+    bool longPress;
     uint64_t startTime;
 } Button;
 
 
 void initialise_button(Button* button, String label);
 void update_button(String label, bool isPressed);
+void update_long_presses();
 
 #endif //BUTTON_H
