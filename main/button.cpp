@@ -1,104 +1,51 @@
+#include <stdint.h>
+
 #include "button.h"
 
-Button initButton(String name)                                                     // initalises button
-{
-    Button button {
-        name,
-        false,
-        0                                                     // ????
-    };
-    return button;
-}
+const uint8_t MAX_BUTTONS = 10;
+static Button* allButtons[MAX_BUTTONS];
+static uint8_t numButtons = 0;
 
-void updateButton()
-{
-    // update buton when it is pressed (goes HIGH)
-    // maybe call buttonsPressed?
-}
 
-Clicked buttonsPressed(Button leftButt, Button rightButt)                                 // checks what button/s are being clicked
-{
-    // due to coding, theres 100ms 'delay' between button clicked and anything updating (LCD)
-    // button will be either HIGH or LOW
-    // if button is just pressed - start timer
-
-    Clicked buttCicked;
-
-    static uint64_t newTime = millis();                                     // gets the time - does this have to be static?
-    static bool leftPressed;                                                // do these have to be static?
-    static bool rightPressed;
-    static bool isButtonPressed = false;
-    static uint64_t startTime;
-    
-    if ((leftButt.pressed || rightButt.pressed) && !isButtonPressed) {
-        startTime = newTime;                                                // starts the timer - does this have to be static?
-        isButtonPressed = true;
-        if (leftButt.pressed) {
-            leftPressed = true;
-            rightPressed = false;
-        } else {
-            leftPressed = false;
-            rightPressed = true;
-        }
+static void register_button(Button* button) {
+    if (numButtons < MAX_BUTTONS) { // don't have to worry about going over this amount
+        allButtons[numButtons] = button;
+        numButtons ++;
     }
-
-    uint64_t timepassed = newTime - startTime;
-    if (timepassed < 100) {
-        // check if the other button has been pressed
-        if (leftPressed) {
-            if (rightButt.pressed) {
-                rightPressed = true;
-            }
-        } else if (rightPressed) {
-            if (leftButt.pressed) {
-                leftPressed = true;
-            }
-        }
-    }
-
-
-
-    if (timepassed > 100) {
-        // update what button/s have been clicked
-        isButtonPressed = false;
-        if (leftPressed && rightPressed) {
-            buttClicked = BOTH;
-        } else if (leftPressed && !rightPressed) {
-            buttClicked = LEFT;
-        } else if (rightPressed && !leftPressed) {
-            buttClicked = RIGHT;
-        }
-    }
-
-    // not sure if i should include these next 2 lines....
-    leftButt.pressed = false;
-    rightButt.pressed = false;
-
-    return buttClicked;
 }
 
-
-void doClick(buttClicked)                                                   // enum thing from buttonPressed
-// use buttonPressed to update the LCD
-{
-    bool isError = checkForError();                                         // should be a global variable? - multiple places/modules will call it
-    switch (buttClicked) {
-        case 0:                                                             // NONE
-            break;                                                          // nothing is changed
-        case 1:                                                             // LEFT
-            if (LCD == OFF) {
-                LCD = ON;
-            } else {
-                isError = False;                                            // update so there is no error
-                updateLED(ledPin);
-            }
-            break;
-        case 2:                                                             // RIGHT
-            isError = checkForError();                                      // rechecks if there is an error
-            updateLED(ledPin);
-            // call other error function maybe???           // ????
-        case 3:                                                             // BOTH
-            reset();                                                        // calls function to reset the system
-    }                                                       // reset just needs to set the state to SETUP
+static void set_timer_start(String label) {
+    // updates the start time if the button is pressed
+    size_t i = 0;
+    bool isFound = false;
+    while (i < numButtons && !isFound) { // assumes this label is unique and picks the first one found
+        if (allButtons[i]->label == label) {
+            allButtons[i]->startTime = millis();
+            isFound = true;
+        }
+        i ++;
+    }
 }
 
+void initialise_button(Button* button, String label) {
+    // sets the button label, puts button in default state and registers it
+    button->label = label;
+    button->pressed = false;
+    register_button(button);
+}
+
+void update_button(String label, bool isPressed) {
+    // it will update the button's state and start time depending on if it's pressed
+    size_t i = 0;
+    bool isFound = false;
+    while (i < numButtons && !isFound) { // assumes this label is unique and picks the first one found
+        if (allButtons[i]->label == label) {
+            if (isPressed) {
+                set_timer_start(label);
+            }
+            allButtons[i]->pressed = isPressed;
+            isFound = true;
+        }
+        i ++;
+    }
+}
