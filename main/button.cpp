@@ -63,3 +63,13 @@ void update_longPresses() {
     }
 }
 
+bool isButClicked(Button* button, int buttonPin) {
+    if (digitalRead(buttonPin) == HIGH && !button->pressed) { // when you select the option
+        update_button(button->label, HIGH);
+    } else if (digitalRead(buttonPin) == LOW && button->pressed) {
+        update_button(button->label, LOW);
+        return true;
+    }
+    return false;
+}
+

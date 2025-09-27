@@ -22,5 +22,6 @@ typedef struct {
 void initialise_button(Button* button, String label);
 void update_button(String label, bool isPressed);
 void update_long_presses();
+bool isButClicked(Button* button, int buttonPin);
 
 #endif //BUTTON_H
