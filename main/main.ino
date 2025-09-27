@@ -63,10 +63,13 @@ float moisture = 0;
 float light = 0;
 float temperature = 0;
 
-// tracks whether there are any errors
-bool moistureError = true;
-bool lightError = false;
-bool temperatureError = true;
+// tracks what errors have occurred
+bool moistureLowError = true;
+bool moistureHighError = false;
+bool lightLowError = true;
+bool lightHighError = false;
+bool temperatureLowError = true;
+bool temperatureError = false;
 
 // resets the entire system
 void reset()
@@ -119,49 +122,71 @@ void checkForError() {
   float avgLight = light / NUM_MEASUREMENTS;
   float avgTemperature = temperature / NUM_MEASUREMENTS;
 
-  bool checkMoisture = avgMoisture > moistureRange[moistureLevel] && avgMoisture < moistureRange[moistureLevel + 1];
-  bool checkLight = avgLight > lightRange[lightLevel] && avgLight < lightRange[lightLevel + 1];
-  bool checkTemperature = avgTemperature > temperatureRange[temperatureLevel] && avgTemperature < temperatureRange[temperatureLevel + 1];
+  bool checkMoistureLow = avgMoisture < moistureRange[moistureLevel];
+  bool checkMoistureHigh = avgMoisture > moistureRange[moistureLevel + 1];
+  bool checkLightLow = avgLight < lightRange[lightLevel];
+  bool checkLightHigh = avgLight > lightRange[lightLevel + 1];
+  bool checkTemperatureLow = avgTemperature < temperatureRange[temperatureLevel];
+  bool checkTemperatureHigh = avgTemperature > temperatureRange[temperatureLevel + 1];
 
-  if (!checkMoisture) {
-    moistureError = true;
-    currentState = ERROR;
+  if (checkMoistureLow) {
+        moistureLowError = true;
+        currentState = ERROR;
+  } else if (checkMoistureHigh) {
+      moistureHighError = true;
+      currentState = ERROR;
   }
 
-  if (!checkLight) {
-    lightError = true;
-    currentState = ERROR;
+  if (checkLightLow) {
+      lightLowError = true;
+      currentState = ERROR;
+  } else if (checkLightHigh) {
+      lightHighError = true;
+      currentState = ERROR;
   }
 
-  if (!checkTemperature) {
-    temperatureError = true;
-    currentState = ERROR;
+  if (checkTempLow) {
+      temperatureLowError = true;
+      currentState = ERROR;
+  } else if (checkTempHigh) {
+      temperatureHighError = true;
+      currentState = ERROR;
   }
 }
 
 String write_error(int line) {
   String error = "";
   int numErrors = 0;
-  if (moistureError) {
-    error += "Moisture";
+  if (moistureLowError) {
+    error += "Low Moisture";
     numErrors ++;
+  } else if (moistureHighError) {
+    error += "High Moisture";
+    numErrors++;
   }
 
-  if (lightError) {
+  if (lightLowError) {
     if (numErrors > 0) {
       error += ", ";
     }
-    error += "Light";
+    error += "Low Light";
     numErrors ++;
+  } else if (lightHighError) {
+    error += "High Light";
+    numErrors++;
   }
 
-  if (temperatureError) {
+  if (temperatureLowError) {
     if (numErrors > 0) {
       error += ", ";
     }
-    error += "Temperature";
+    error += "Low Temperature";
     numErrors ++;
+  } else if (temperatureHighError) {
+    error += "High Temperature";
+    numErrors++;
   }
+
   if (numErrors > 1) {
     error += " Errors!";
   } else {
