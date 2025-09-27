@@ -10,6 +10,7 @@
 #define LEFT_BUTTON_PIN 3 // change the pin to whatever the schematic is
 #define RIGHT_BUTTON_PIN 2 // change the pin to whatever the schematic is
 
+// sensor pins
 #define LIGHT A0
 #define MOISTURE A1
 #define TEMPERATURE A2
@@ -63,9 +64,9 @@ float light = 0;
 float temperature = 0;
 
 // tracks whether there are any errors
-bool moistureError = false;
+bool moistureError = true;
 bool lightError = false;
-bool temperatureError = false;
+bool temperatureError = true;
 
 // resets the entire system
 void reset()
@@ -81,11 +82,15 @@ Level getLevel()
   lcd_write(&lcd, levelNames[currentLevel], 1);
 
   while (1) {
-    if (digitalRead(LEFT_BUTTON_PIN) == HIGH && !leftBut.pressed) { // when you select the option
-      update_button("L", HIGH);
-    } else if (digitalRead(LEFT_BUTTON_PIN) == LOW && leftBut.pressed) {
-      update_button("L", LOW);
+    if (isButClicked(&leftBut, LEFT_BUTTON_PIN)) {
       return currentLevel;
+    }
+    if (isButClicked(&rightBut, RIGHT_BUTTON_PIN)) {
+      currentLevel = (Level)(currentLevel + 1);
+      if (currentLevel >= numLevels) {
+        currentLevel = LOWER;
+      }
+      lcd_write(&lcd, levelNames[currentLevel], 1);
     }
 
     // cycling through options
@@ -134,6 +139,40 @@ void checkForError() {
   }
 }
 
+String write_error(int line) {
+  String error = "";
+  int numErrors = 0;
+  if (moistureError) {
+    error += "Moisture";
+    numErrors ++;
+  }
+
+  if (lightError) {
+    if (numErrors > 0) {
+      error += ", ";
+    }
+    error += "Light";
+    numErrors ++;
+  }
+
+  if (temperatureError) {
+    if (numErrors > 0) {
+      error += ", ";
+    }
+    error += "Temperature";
+    numErrors ++;
+  }
+  if (numErrors > 1) {
+    error += " Errors!";
+  } else {
+    error += " Error!";
+  }
+  if (lcd_write(&lcd, error, line)) {
+    return error;
+  }
+  return "";
+}
+
 void setup() {
   Serial.begin(9600);
 
@@ -145,7 +184,7 @@ void setup() {
   initialise_button(&leftBut, "L");
   initialise_button(&rightBut, "R");
 
-  currentState = SETUP;
+  currentState = ERROR;
 }
 
 void loop() {
@@ -187,21 +226,26 @@ void loop() {
 
     case ERROR:
       digitalWrite(LED, HIGH);
-
-      int row = 0;
-      if (moistureError) {
-        lcd_write(&lcd, "Moisture Error!", row);
-        row++;
-      }
-
-      if (lightError) {
-        lcd_write(&lcd, "Light Error!", row);
-        row++;
-      }
-
-      if (temperatureError) {
-        lcd_write(&lcd, "Temperature Error!", row);
-        row++;
+      String error = write_error(0);
+      bool isDone = false;
+      if (error.length() > 0) { // only happens if the line is too long
+        unsigned long shiftTime = millis();
+        while (!isDone) {
+          if (millis() - shiftTime >= 750) {
+            shift_text(&lcd, error, 0);
+            shiftTime = millis();
+          }
+          if (isButClicked(&leftBut, LEFT_BUTTON_PIN)) { // CHANGE THESE LATER TO WHAT THEY ARE SUPPOSED TO DO
+            currentState = SETUP;
+            lcd.clear();
+            isDone = true;
+          }
+          if (isButClicked(&rightBut, RIGHT_BUTTON_PIN)) { // CHANGE THESE LATER TO WHAT THEY ARE SUPPOSED TO DO
+            currentState = SETUP;
+            lcd.clear();
+            isDone = true;
+          }
+        }
       }
       break;
   }
