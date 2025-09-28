@@ -7,70 +7,74 @@
 #include "led.h"
 
 #define LED 4
-#define LEFT_BUTTON_PIN 2 // change the pin to whatever the schematic is
-#define RIGHT_BUTTON_PIN 3 // change the pin to whatever the schematic is
+#define LEFT_BUTTON_PIN 2 // pin for left button
+#define RIGHT_BUTTON_PIN 3 // pin for right button
 
 // sensor pins
-#define LIGHT A0
-#define MOISTURE A1
-#define TEMP A2
+#define LIGHT A0 // light sensor
+#define MOISTURE A1 // moisture sensor
+#define TEMP A2 // temperature sensor
 
-hd44780_I2Cexp lcd;
-Button leftBut;
-Button rightBut;
+hd44780_I2Cexp lcd; // lcd object
+Button leftBut; // left button object
+Button rightBut; // right button object
 
 typedef enum {
   SETUP,
   IDLE,
   ERROR
-} State;
+} State; // system states
 
 typedef enum {
   LOWER,
   MEDIUM,
   HIGHER
-} Level;
+} Level; // level options
 
-bool daytime;
+bool daytime; // track if it is day
 
-const char* levelNames[] = {"Low", "Medium", "High"};
-const int numLevels = sizeof(levelNames) / sizeof(levelNames[0]);;
+const char* levelNames[] = {"Low", "Medium", "High"}; // level names
+const int numLevels = sizeof(levelNames) / sizeof(levelNames[0]); // number of levels
 
-const float moistureRange[] = {0, 1, 2, 3}; // update according to testing/datasheet of components
-const float lightRange[] = {0, 1, 2, 3};
-const float tempRange[] = {0, 1, 2, 3};
+// bounds for error checking
+const float moistureBounds[] = {0, 1, 2, 3}; 
+const float lightBounds[] = {0, 1, 2, 3};
+const float tempBounds[] = {0, 1, 2, 3};
 
-State currentState;
+State currentState; // current system state
+Level moistureLevel; // user selected moisture level
+Level lightLevel; // user selected light level
+Level tempLevel; // user selected temp level
 
-Level moistureLevel;
-Level lightLevel;
-Level tempLevel;
+// timing for sensors and error checks
+const unsigned long SENSOR_CHECK_INTERVAL = 60000; // 1 min interval
+const unsigned long ERROR_CHECK_INTERVAL = 1800000; // 30 min interval
 
-const unsigned long SENSOR_CHECK_INTERVAL = 60000; // how often to check the sensors (60000 milliseconds = 1 minute)
-const unsigned long ERROR_CHECK_INTERVAL = 1800000; // how often to take the average sensor values (1800000 milliseconds = 30 minutes)
+const unsigned long NUM_MEASUREMENTS = ERROR_CHECK_INTERVAL / SENSOR_CHECK_INTERVAL; // measurements per error check
 
-const unsigned long NUM_MEASUREMENTS = ERROR_CHECK_INTERVAL / SENSOR_CHECK_INTERVAL; // number of measurements made before checking for an error
-
+// timing trackers
 unsigned long lastSensorCheckTime;
 unsigned long lastErrorCheckTime;
 unsigned long errorStartTime;
 
+// running sums for sensor readings
 float moisture = 0;
 float light = 0;
 float temp = 0;
 
-// tracks what errors have occurred
-bool moistureLowError = true;
+// track which errors are active
+bool moistureLowError = false;
 bool moistureHighError = false;
 bool lightLowError = false;
 bool lightHighError = false;
 bool tempLowError = false;
 bool tempHighError = false;
 
+// lcd and led state tracking
 bool lcdOn = false;
 bool ledOn = false;
 
-// resets the entire system
+// reset running sensor values
 void resetSensorValues()
 {
   moisture = 0;
@@ -78,26 +82,30 @@ void resetSensorValues()
   temp = 0;
 }
 
+// allow user to select a level
 Level getLevel()
 {
   char choice;
   Level currentLevel = LOWER;
 
-  lcd_write(&lcd, levelNames[currentLevel], 1);
+  lcd_write(&lcd, levelNames[currentLevel], 1); // show initial level
 
   while (1) {
+    // left button confirms level
     if (isButClicked(&leftBut, LEFT_BUTTON_PIN)) {
       return currentLevel;
     }
+
+    // right button cycles level
     if (isButClicked(&rightBut, RIGHT_BUTTON_PIN)) {
       currentLevel = (Level)(currentLevel + 1);
       if (currentLevel >= numLevels) {
         currentLevel = LOWER;
       }
-      lcd_write(&lcd, levelNames[currentLevel], 1);
+      lcd_write(&lcd, levelNames[currentLevel], 1); // update lcd
     }
 
-    // cycling through options
+    // handle button press/release cycling
     if (digitalRead(RIGHT_BUTTON_PIN) == HIGH && !rightBut.pressed) {
       update_button("R", HIGH);
     } else if (digitalRead(RIGHT_BUTTON_PIN) == LOW && rightBut.pressed) {
@@ -111,6 +119,7 @@ Level getLevel()
   }
 }
 
+// add current sensor readings to running totals
 void checkSensors()
 {
   moisture += analogRead(MOISTURE);
@@ -118,116 +127,133 @@ void checkSensors()
   temp += analogRead(TEMP);
 }
 
-void checkForError() {
-  float avgMoisture = moisture / NUM_MEASUREMENTS;
-  float avgLight = light / NUM_MEASUREMENTS;
-  float avgTemp = temp / NUM_MEASUREMENTS;
+// check averages and set error flags
+void checkForError()
+{
+  float avgMoisture = moisture / NUM_MEASUREMENTS; // avg moisture
+  float avgLight = light / NUM_MEASUREMENTS; // avg light
+  float avgTemp = temp / NUM_MEASUREMENTS; // avg temp
 
-  if (avgMoisture < moistureRange[moistureLevel]) {
+  // moisture bounds check
+  if (avgMoisture < moistureBounds[moistureLevel]) {
         moistureLowError = true;
         currentState = ERROR;
-  } else if (avgMoisture > moistureRange[moistureLevel + 1]) {
+  } else if (avgMoisture > moistureBounds[moistureLevel + 1]) {
       moistureHighError = true;
       currentState = ERROR;
   }
 
-  if (avgLight < lightRange[lightLevel]) {
+  // light bounds check
+  if (avgLight < lightBounds[lightLevel]) {
       lightLowError = true;
       currentState = ERROR;
-  } else if (avgLight > lightRange[lightLevel + 1]) {
+  } else if (avgLight > lightBounds[lightLevel + 1]) {
       lightHighError = true;
       currentState = ERROR;
   }
 
-  if (avgTemp < tempRange[tempLevel]) {
+  // temp bounds check
+  if (avgTemp < tempBounds[tempLevel]) {
       tempLowError = true;
       currentState = ERROR;
-  } else if (avgTemp > tempRange[tempLevel + 1]) {
+  } else if (avgTemp > tempBounds[tempLevel + 1]) {
       tempHighError = true;
       currentState = ERROR;
   }
 
-  resetSensorValues();
-  errorStartTime = millis();
+  resetSensorValues(); // clear totals
+  errorStartTime = millis(); // reset lcd timer
 }
 
-String write_error(int line) {
+// build error message and write to lcd
+String write_error(int line)
+{
   String error = "";
   int numErrors = 0;
+
   if (moistureLowError) {
     error += "Low Moisture";
     numErrors ++;
   }
   
   if (moistureHighError) {
+    if (numErrors > 0) error += ", ";
     error += "High Moisture";
     numErrors++;
   }
 
   if (lightLowError) {
-    if (numErrors > 0) {
-      error += ", ";
-    }
+    if (numErrors > 0) error += ", ";
     error += "Low Light";
     numErrors ++;
   }
 
   if (lightHighError) {
-    if (numErrors > 0) {
-      error += ", ";
-    }
+    if (numErrors > 0) error += ", ";
     error += "High Light";
     numErrors++;
   }
 
   if (tempLowError) {
-    if (numErrors > 0) {
-      error += ", ";
-    }
+    if (numErrors > 0) error += ", ";
     error += "Low Temp";
     numErrors ++;
   }
   
   if (tempHighError) {
-    if (numErrors > 0) {
-      error += ", ";
-    }
+    if (numErrors > 0) error += ", ";
     error += "High Temp";
     numErrors++;
   }
 
-  if (lcd_write(&lcd, error, line)) {
+  if (lcd_write(&lcd, error, line)) { // write to lcd
     return error;
   }
   return "";
 }
 
-bool hasError() {
+// return true if any error flags set
+bool hasError()
+{
   return moistureLowError || moistureHighError || lightLowError || lightHighError || tempLowError || tempHighError;
 }
 
-void setup() {
-  Serial.begin(9600);
+// periodically update sensors and errors
+void updateSensorsAndErrors()
+{
+  if (millis() - lastSensorCheckTime >= SENSOR_CHECK_INTERVAL) {
+    checkSensors();
+    lastSensorCheckTime = millis();
+  }
 
-  lcd_setup(&lcd, true);
-  pinMode(LED, OUTPUT);
-
-  pinMode(LEFT_BUTTON_PIN, INPUT);
-  pinMode(RIGHT_BUTTON_PIN, INPUT);
-  initialise_button(&leftBut, "L");
-  initialise_button(&rightBut, "R");
-
-  currentState = ERROR;
-  errorStartTime = millis(); // DELETE THIS LATER
+  if (millis() - lastErrorCheckTime >= ERROR_CHECK_INTERVAL) {
+    checkForError();
+    lastErrorCheckTime = millis();
+  }
 }
 
-void loop() {
-  // TO DO RIGHT HERE AT THE START OF LOOP()!
-  // if it's day, switch current time to DAY
-  // if the reset button is pressed, call reset()
-  daytime = true;
+void setup()
+{
+  Serial.begin(9600);
+
+  lcd_setup(&lcd, true); // init lcd
+  pinMode(LED, OUTPUT); // set led pin
+
+  pinMode(LEFT_BUTTON_PIN, INPUT); // set button pins
+  pinMode(RIGHT_BUTTON_PIN, INPUT);
+  initialise_button(&leftBut, "L"); // init buttons
+  initialise_button(&rightBut, "R");
+
+  currentState = SETUP; // start in setup
+}
+
+void loop()
+{
+  daytime = true; // assume day
+
   switch (currentState) {
     case SETUP:
+      // ask user for thresholds
       lcd_write(&lcd, "Soil moisture?", 0);
       moistureLevel = getLevel();
       Serial.print("Soil moisture set to: ");
@@ -243,51 +269,68 @@ void loop() {
       Serial.print("Warmth set to: ");
       Serial.println(levelNames[tempLevel]);
 
-      currentState = IDLE;
+      currentState = IDLE; // done setup
       lcd.clear();
-      lastSensorCheckTime = millis();
+      lastSensorCheckTime = millis(); // reset timers
       lastErrorCheckTime = millis();
       break;
 
     case IDLE:
-      // unsigned long currentTime = millis();
-      // if (currentTime - startTime >= SENSOR_CHECK_INTERVAL) {
-      //   checkSensors();
-      //   lastSensorCheckTime = millis();
-      // } else if (currentTime - lastErrorCheckTime >= ERROR_CHECK_INTERVAL) {
-      //   checkForError();
-      //   lastErrorCheckTime = millis();
-      // }
-      // break;
+      updateSensorsAndErrors(); // update sensors and errors
+
+      if (!hasError()) {
+        static bool messageShown = false;
+        if (!messageShown) {
+          lcd.clear();
+          lcd.backlight(); // turn on lcd
+          lcd_write(&lcd, "No Error!", 0);
+          messageShown = true;
+        }
+      } else {
+        currentState = ERROR; // go to error state
+      }
+      break;
 
     case ERROR:
+      updateSensorsAndErrors(); // continue updating
+
       if (hasError()) {
         static String error;
         static unsigned long shiftTime;
         static bool firstRun = true;
 
         if (firstRun) {
-          error = write_error(0);
+          error = write_error(0); // display first error
           lcd.backlight();
           lcdOn = true;
-          errorStartTime = millis();
-          shiftTime = millis();
+          errorStartTime = millis(); // start lcd timer
+          shiftTime = millis(); // start scroll timer
           firstRun = false;
         }
 
-        digitalWrite(LED, ledOn ? LOW : HIGH);
+        // blink led
+        if (ledOn) {
+          digitalWrite(LED, LOW);
+        } else {
+          digitalWrite(LED, HIGH);
+        }
+        
+        ledOn = !ledOn;
         ledOn = !ledOn;
 
+        // turn off lcd after 5 sec
         if (millis() - errorStartTime >= 5000 && lcdOn) {
           lcd.noBacklight();
           lcdOn = false;
         }
 
+        // scroll error text
         if (millis() - shiftTime >= 750 && error.length() > 0) {
           shift_text(&lcd, error, 0);
           shiftTime = millis();
         }
 
+        // left button clears errors or wakes lcd
         if (isButClicked(&leftBut, LEFT_BUTTON_PIN)) {
           if (!lcdOn) {
             lcd.backlight();
@@ -295,22 +338,23 @@ void loop() {
             errorStartTime = millis();
           } else {
             resetSensorValues();
-            currentState = SETUP; // CHANGE TO IDLE
+            currentState = IDLE;
             firstRun = true;
             lcd.clear();
           }
         }
 
+        // right button refreshes error display
         if (isButClicked(&rightBut, RIGHT_BUTTON_PIN)) {
-          tempLowError = true; // THIS IS HARDCODED FOR TESTING
           lcd.backlight();
           lcdOn = true;
+          errorStartTime = millis();
           firstRun = true;
-          checkForError();
+          // checkForError(); uncomment when sensors are added
           lcd.clear();
         }
       } else {
-        currentState = SETUP; // CHANGE TO IDLE
+        currentState = IDLE; // no errors go idle
       }
       break;
   }
