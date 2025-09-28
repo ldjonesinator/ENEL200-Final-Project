@@ -42,9 +42,7 @@ void update_button(String label, bool isPressed) {
     bool isFound = false;
     while (i < numButtons && !isFound) { // assumes this label is unique and picks the first one found
         if (allButtons[i]->label == label) {
-            if (isPressed) {
-                set_timer_start(label);
-            }
+            set_timer_start(label);
             allButtons[i]->pressed = isPressed;
             isFound = true;
         }
@@ -64,11 +62,13 @@ void update_longPresses() {
 }
 
 bool isButClicked(Button* button, int buttonPin) {
-    if (digitalRead(buttonPin) == HIGH && !button->pressed) { // when you select the option
-        update_button(button->label, HIGH);
-    } else if (digitalRead(buttonPin) == LOW && button->pressed) {
-        update_button(button->label, LOW);
-        return true;
+    if (millis() - button->startTime > 100) { // 50 ms to account for bouncing
+        if (digitalRead(buttonPin) == HIGH && !button->pressed) { // when you select the option
+            update_button(button->label, HIGH);
+        } else if (digitalRead(buttonPin) == LOW && button->pressed) {
+            update_button(button->label, LOW);
+            return true;
+        }
     }
     return false;
 }
