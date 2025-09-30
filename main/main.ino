@@ -1,12 +1,13 @@
 #include <Wire.h>
 #include <hd44780.h>
 #include <hd44780ioClass/hd44780_I2Cexp.h>
+#include "RTClib.h"
 
 #include "lcd.h"
 #include "button.h"
 #include "led.h"
 
-#define LED 4
+#define LED 4 // pin for error led
 #define LEFT_BUTTON_PIN 2 // pin for left button
 #define RIGHT_BUTTON_PIN 3 // pin for right button
 
@@ -18,6 +19,7 @@
 hd44780_I2Cexp lcd; // lcd object
 Button leftBut; // left button object
 Button rightBut; // right button object
+RTC_DS3231 rtc; // real time clock object
 
 typedef enum {
   SETUP,
@@ -55,6 +57,7 @@ const unsigned long NUM_MEASUREMENTS = ERROR_CHECK_INTERVAL / SENSOR_CHECK_INTER
 // timing trackers
 unsigned long lastSensorCheckTime;
 unsigned long lastErrorCheckTime;
+unsigned long idleStartTime;
 unsigned long errorStartTime;
 
 // running sums for sensor readings
@@ -74,7 +77,6 @@ bool tempHighError = false;
 bool lcdOn = false;
 bool ledOn = false;
 
-// reset running sensor values
 void resetSensorValues()
 {
   moisture = 0;
@@ -88,7 +90,7 @@ Level getLevel()
   char choice;
   Level currentLevel = LOWER;
 
-  lcd_write(&lcd, levelNames[currentLevel], 1); // show initial level
+  lcd_write(&lcd, levelNames[currentLevel], 1);
 
   while (1) {
     // left button confirms level
@@ -96,16 +98,15 @@ Level getLevel()
       return currentLevel;
     }
 
-    // right button cycles level
+    // right button cycles through levels
     if (isButClicked(&rightBut, RIGHT_BUTTON_PIN)) {
       currentLevel = (Level)(currentLevel + 1);
       if (currentLevel >= numLevels) {
         currentLevel = LOWER;
       }
-      lcd_write(&lcd, levelNames[currentLevel], 1); // update lcd
+      lcd_write(&lcd, levelNames[currentLevel], 1);
     }
 
-    // handle button press/release cycling
     if (digitalRead(RIGHT_BUTTON_PIN) == HIGH && !rightBut.pressed) {
       update_button("R", HIGH);
     } else if (digitalRead(RIGHT_BUTTON_PIN) == LOW && rightBut.pressed) {
@@ -130,9 +131,9 @@ void checkSensors()
 // check averages and set error flags
 void checkForError()
 {
-  float avgMoisture = moisture / NUM_MEASUREMENTS; // avg moisture
-  float avgLight = light / NUM_MEASUREMENTS; // avg light
-  float avgTemp = temp / NUM_MEASUREMENTS; // avg temp
+  float avgMoisture = moisture / NUM_MEASUREMENTS;
+  float avgLight = light / NUM_MEASUREMENTS;
+  float avgTemp = temp / NUM_MEASUREMENTS;
 
   // moisture bounds check
   if (avgMoisture < moistureBounds[moistureLevel]) {
@@ -161,8 +162,8 @@ void checkForError()
       currentState = ERROR;
   }
 
-  resetSensorValues(); // clear totals
-  errorStartTime = millis(); // reset lcd timer
+  resetSensorValues();
+  errorStartTime = millis();
 }
 
 // build error message and write to lcd
@@ -206,7 +207,7 @@ String write_error(int line)
     numErrors++;
   }
 
-  if (lcd_write(&lcd, error, line)) { // write to lcd
+  if (lcd_write(&lcd, error, line)) {
     return error;
   }
   return "";
@@ -232,28 +233,43 @@ void updateSensorsAndErrors()
   }
 }
 
+void showBacklight() {
+  if (daytime) {
+    lcd.backlight();
+  }
+}
+
 void setup()
 {
   Serial.begin(9600);
 
-  lcd_setup(&lcd, true); // init lcd
-  pinMode(LED, OUTPUT); // set led pin
+  rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // set rtc to current time
 
-  pinMode(LEFT_BUTTON_PIN, INPUT); // set button pins
+  lcd_setup(&lcd, true);
+  pinMode(LED, OUTPUT);
+
+  pinMode(LEFT_BUTTON_PIN, INPUT);
   pinMode(RIGHT_BUTTON_PIN, INPUT);
-  initialise_button(&leftBut, "L"); // init buttons
+  initialise_button(&leftBut, "L");
   initialise_button(&rightBut, "R");
 
-  currentState = SETUP; // start in setup
+  currentState = SETUP; // start system in setup
 }
 
 void loop()
 {
-  daytime = true; // assume day
+  DateTime now = rtc.now();
+  
+  if (now.hour() >= 9 && now.hour() <= 21) { // 9am to 9pm is day
+    daytime = true;
+  } else {
+    daytime = false;
+  }
 
   switch (currentState) {
     case SETUP:
-      // ask user for thresholds
+      lcd.backlight();
+
       lcd_write(&lcd, "Soil moisture?", 0);
       moistureLevel = getLevel();
       Serial.print("Soil moisture set to: ");
@@ -269,53 +285,68 @@ void loop()
       Serial.print("Warmth set to: ");
       Serial.println(levelNames[tempLevel]);
 
-      currentState = IDLE; // done setup
-      lcd.clear();
-      lastSensorCheckTime = millis(); // reset timers
+      currentState = IDLE;
+      lastSensorCheckTime = millis();
       lastErrorCheckTime = millis();
       break;
 
     case IDLE:
-      updateSensorsAndErrors(); // update sensors and errors
+      updateSensorsAndErrors();
 
       if (!hasError()) {
-        static bool messageShown = false;
-        if (!messageShown) {
+        static bool firstIdleRun = true;
+
+        if (firstIdleRun) {
+          showBacklight();
           lcd.clear();
-          lcd.backlight(); // turn on lcd
           lcd_write(&lcd, "No Error!", 0);
-          messageShown = true;
+          idleStartTime = millis();
+          lcdOn = true;
+          firstIdleRun = false;
         }
+
+        // turn off lcd after 5 seconds of inactivity
+        if (lcdOn && millis() - idleStartTime >= 5000) {
+          lcd.noBacklight();
+          lcdOn = false;
+        }
+
+        // pressing left button wakes lcd for another 5 seconds
+        if (isButClicked(&leftBut, LEFT_BUTTON_PIN)) {
+          lcd.backlight();
+          idleStartTime = millis();
+          lcdOn = true;
+        }
+
       } else {
-        currentState = ERROR; // go to error state
+        currentState = ERROR;
       }
       break;
 
     case ERROR:
-      updateSensorsAndErrors(); // continue updating
+      updateSensorsAndErrors();
 
       if (hasError()) {
         static String error;
         static unsigned long shiftTime;
-        static bool firstRun = true;
+        static bool firstErrorRun = true;
 
-        if (firstRun) {
-          error = write_error(0); // display first error
-          lcd.backlight();
+        if (firstErrorRun) {
+          showBacklight();
+          lcd.clear();
+          error = write_error(0);
           lcdOn = true;
-          errorStartTime = millis(); // start lcd timer
-          shiftTime = millis(); // start scroll timer
-          firstRun = false;
+          errorStartTime = millis();
+          shiftTime = millis();
+          firstErrorRun = false;
         }
 
-        // blink led
         if (ledOn) {
           digitalWrite(LED, LOW);
         } else {
           digitalWrite(LED, HIGH);
         }
         
-        ledOn = !ledOn;
         ledOn = !ledOn;
 
         // turn off lcd after 5 sec
@@ -339,8 +370,7 @@ void loop()
           } else {
             resetSensorValues();
             currentState = IDLE;
-            firstRun = true;
-            lcd.clear();
+            firstErrorRun = true;
           }
         }
 
@@ -349,12 +379,11 @@ void loop()
           lcd.backlight();
           lcdOn = true;
           errorStartTime = millis();
-          firstRun = true;
+          firstErrorRun = true;
           // checkForError(); uncomment when sensors are added
-          lcd.clear();
         }
       } else {
-        currentState = IDLE; // no errors go idle
+        currentState = IDLE;
       }
       break;
   }
