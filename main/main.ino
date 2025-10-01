@@ -20,6 +20,7 @@ hd44780_I2Cexp lcd; // lcd object
 Button leftBut; // left button object
 Button rightBut; // right button object
 RTC_DS3231 rtc; // real time clock object
+DateTime now;
 
 typedef enum {
   SETUP,
@@ -49,10 +50,10 @@ Level lightLevel; // user selected light level
 Level tempLevel; // user selected temp level
 
 // timing for sensors and error checks
-const unsigned long SENSOR_CHECK_INTERVAL = 60000; // 1 min interval
-const unsigned long ERROR_CHECK_INTERVAL = 1800000; // 30 min interval
+const unsigned long SENSOR_CHECK_INTERVAL = 1000; // currently 1 second, change to 60000 for 1 min interval
+const unsigned long ERROR_CHECK_INTERVAL = 10000; // currently 10 seconds, change to 1800000 for 30 min interval
 
-const unsigned long NUM_MEASUREMENTS = ERROR_CHECK_INTERVAL / SENSOR_CHECK_INTERVAL; // measurements per error check
+int numMeasurements = 0;
 
 // timing trackers
 unsigned long lastSensorCheckTime;
@@ -77,11 +78,15 @@ bool tempHighError = false;
 bool lcdOn = false;
 bool ledOn = false;
 
+int dayStartHour;
+int nightStartHour;
+
 void resetSensorValues()
 {
   moisture = 0;
   light = 0;
   temp = 0;
+  numMeasurements = 0;
 }
 
 // allow user to select a level
@@ -120,20 +125,83 @@ Level getLevel()
   }
 }
 
+// convert 24-hour hour to 12-hour string with AM/PM
+String hourToString(int hour24)
+{
+  int hour12 = hour24 % 12;
+  if (hour12 == 0) {
+    hour12 = 12;
+  }
+
+  String period;
+  if (hour24 < 12 || hour24 == 24) {
+    period = "AM";
+  } else {
+    period = "PM";
+  }
+
+  return "Hour " + String(hour12) + " " + period;
+}
+
+// allow user to select an hour
+int getHour(int startHour24, int endHour24)
+{
+  int currentHour24 = startHour24;
+
+  // helper lambda to convert 24h to 12h with AM/PM
+  auto hourToString = [](int hour24) -> String {
+    int hour12 = hour24 % 12;
+    if (hour12 == 0) hour12 = 12;
+    String period = (hour24 < 12 || hour24 == 24) ? "AM" : "PM";
+    return "Hour " + String(hour12) + " " + period;
+  };
+
+  lcd_write(&lcd, hourToString(currentHour24), 1);
+
+  while (1) {
+    // left button confirms selection
+    if (isButClicked(&leftBut, LEFT_BUTTON_PIN)) {
+      return currentHour24;
+    }
+
+    // right button cycles through hours
+    if (isButClicked(&rightBut, RIGHT_BUTTON_PIN)) {
+      currentHour24++;
+      if (currentHour24 > endHour24) currentHour24 = startHour24;
+      lcd_write(&lcd, hourToString(currentHour24), 1);
+    }
+
+    // handle button state updates
+    if (digitalRead(RIGHT_BUTTON_PIN) == HIGH && !rightBut.pressed) {
+      update_button("R", HIGH);
+    } else if (digitalRead(RIGHT_BUTTON_PIN) == LOW && rightBut.pressed) {
+      update_button("R", LOW);
+      currentHour24++;
+      if (currentHour24 > endHour24) currentHour24 = startHour24;
+      lcd_write(&lcd, hourToString(currentHour24), 1);
+    }
+  }
+}
+
 // add current sensor readings to running totals
 void checkSensors()
 {
   moisture += analogRead(MOISTURE);
   light += analogRead(LIGHT);
   temp += analogRead(TEMP);
+  numMeasurements++;
 }
 
 // check averages and set error flags
 void checkForError()
 {
-  float avgMoisture = moisture / NUM_MEASUREMENTS;
-  float avgLight = light / NUM_MEASUREMENTS;
-  float avgTemp = temp / NUM_MEASUREMENTS;
+  if (numMeasurements == 0) {
+    checkSensors();
+  }
+
+  float avgMoisture = moisture / numMeasurements;
+  float avgLight = light / numMeasurements;
+  float avgTemp = temp / numMeasurements;
 
   // moisture bounds check
   if (avgMoisture < moistureBounds[moistureLevel]) {
@@ -243,7 +311,9 @@ void setup()
 {
   Serial.begin(9600);
 
-  rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // set rtc to current time
+  while (!rtc.begin()) {
+    continue;
+  }
 
   lcd_setup(&lcd, true);
   pinMode(LED, OUTPUT);
@@ -258,9 +328,9 @@ void setup()
 
 void loop()
 {
-  DateTime now = rtc.now();
-  
-  if (now.hour() >= 9 && now.hour() <= 21) { // 9am to 9pm is day
+  now = rtc.now();
+
+  if (now.hour() >= dayStartHour && now.hour() <= nightStartHour) {
     daytime = true;
   } else {
     daytime = false;
@@ -284,6 +354,16 @@ void loop()
       tempLevel = getLevel();
       Serial.print("Warmth set to: ");
       Serial.println(levelNames[tempLevel]);
+
+      lcd_write(&lcd, "Set day start", 0);
+      dayStartHour = getHour(1, 12);
+      Serial.print("Day start hour set to ");
+      Serial.println(dayStartHour);
+
+      lcd_write(&lcd, "Set night start", 0);
+      nightStartHour = getHour(13, 24);
+      Serial.print("Night start hour set to ");
+      Serial.println(nightStartHour);
 
       currentState = IDLE;
       lastSensorCheckTime = millis();
@@ -380,7 +460,7 @@ void loop()
           lcdOn = true;
           errorStartTime = millis();
           firstErrorRun = true;
-          // checkForError(); uncomment when sensors are added
+          //checkForError(); enable when sensors are added
         }
       } else {
         currentState = IDLE;
