@@ -39,7 +39,7 @@ typedef enum {
 
 typedef enum {
   ERROR_SCROLL,
-  ERROR_INSTANT_MEAS
+  ERROR_INSTANT_MEASUREMENT
 } ErrorSubState;
 
 bool daytime; // track if it is day
@@ -54,8 +54,8 @@ const float lightBounds[] = {0, 1, 2, 3};
 const float tempBounds[] = {0, 1, 2, 3};
 
 // timing intervals
-const unsigned long SENSOR_CHECK_INTERVAL = 1000; // currently 1 second, change to 60000 for 1 min interval
-const unsigned long ERROR_CHECK_INTERVAL = 10000; // currently 10 seconds, change to 1800000 for 30 min interval
+const unsigned long SENSOR_CHECK_INTERVAL_SEC = 10;
+const unsigned long ERROR_CHECK_INTERVAL_SEC = 60;
 
 // state tracking
 State currentState; // current system state
@@ -65,10 +65,10 @@ Level lightLevel; // user selected light level
 Level tempLevel; // user selected temp level
 
 // timing trackers
-unsigned long lastSensorCheckTime;
-unsigned long lastErrorCheckTime;
 unsigned long idleStartTime;
 unsigned long errorStartTime;
+long lastSensorCheckSec = -1;
+long lastErrorCheckSec  = -1;
 
 // measurement tracking
 int numMeasurements = 0; // counts the number of measurements (used for averaging)
@@ -263,13 +263,13 @@ String write_error(int line)
 
   if (tempLowError) {
     if (numErrors > 0) error += ", ";
-    error += "Low Temp";
+    error += "Low Temperature";
     numErrors ++;
   }
   
   if (tempHighError) {
     if (numErrors > 0) error += ", ";
-    error += "High Temp";
+    error += "High Temperature";
     numErrors++;
   }
 
@@ -285,17 +285,26 @@ bool hasError()
   return moistureLowError || moistureHighError || lightLowError || lightHighError || tempLowError || tempHighError;
 }
 
-// check sensors and check for error if it's time to do so
-void updateSensorsAndErrors()
+long currentTimeInSeconds()
 {
-  if (millis() - lastSensorCheckTime >= SENSOR_CHECK_INTERVAL) {
+  return now.hour() * 3600L + now.minute() * 60L + now.second();
+}
+
+// check sensors and check for error if it's time to do so
+void checkSensorsAndErrors()
+{
+  long currentSec = currentTimeInSeconds();
+
+  if ((currentSec % SENSOR_CHECK_INTERVAL_SEC) == 0 && currentSec != lastSensorCheckSec) {
     checkSensors();
-    lastSensorCheckTime = millis();
+    lastSensorCheckSec = currentSec;
+    Serial.println("Checking sensors at "+ String(now.hour()) + ":" + String(now.minute()) + ":" + String(now.second()));
   }
 
-  if (millis() - lastErrorCheckTime >= ERROR_CHECK_INTERVAL) {
+  if ((currentSec % ERROR_CHECK_INTERVAL_SEC) == 0 && currentSec != lastErrorCheckSec) {
     checkForError();
-    lastErrorCheckTime = millis();
+    lastErrorCheckSec = currentSec;
+    Serial.println("Checking for error at "+ String(now.hour()) + ":" + String(now.minute()) + ":" + String(now.second()));
   }
 }
 
@@ -359,12 +368,10 @@ void loop()
       Serial.println(nightStartHour);
 
       currentState = IDLE;
-      lastSensorCheckTime = millis();
-      lastErrorCheckTime = millis();
       break;
 
     case IDLE:
-      updateSensorsAndErrors();
+      checkSensorsAndErrors();
 
       if (!hasError()) {
         static bool firstIdleRun = true;
@@ -398,7 +405,7 @@ void loop()
       break;
 
     case ERROR:
-      updateSensorsAndErrors();
+      checkSensorsAndErrors();
 
       // get out of the error state if there's no error
       if (!hasError()) {
@@ -436,7 +443,7 @@ void loop()
 
       // system starts in ERROR_SCROLL by default
       switch (errorSubState) {
-          case ERROR_INSTANT_MEAS:
+          case ERROR_INSTANT_MEASUREMENT:
               if (instantMeasurementType != lastDisplayedType) {
                   lcd.clear();
                   String measurementType;
@@ -455,7 +462,7 @@ void loop()
                           idealValue = lightBounds[lightLevel + 1];
                           break;
                       case 2:
-                          measurementType = "Temp";
+                          measurementType = "Temperature";
                           currentValue = instantTemp;
                           idealValue = tempBounds[tempLevel + 1];
                           break;
@@ -512,7 +519,7 @@ void loop()
                   lastDisplayedType = -1;
                   lcd.backlight();
                   lcdOn = true;
-                  errorSubState = ERROR_INSTANT_MEAS;
+                  errorSubState = ERROR_INSTANT_MEASUREMENT;
               }
               break;
       }
