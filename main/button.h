@@ -4,13 +4,6 @@
 #include <Arduino.h>
 #include <stdint.h>
 
-// typedef enum {
-//     NONE,
-//     LEFT,
-//     RIGHT,
-//     BOTH
-// } Clicked;
-
 typedef struct {
     String label;
     bool pressed;
