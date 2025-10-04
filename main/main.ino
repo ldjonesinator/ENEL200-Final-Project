@@ -49,7 +49,7 @@ const char* levelNames[] = {"Low", "Medium", "High"}; // level names
 const int numLevels = sizeof(levelNames) / sizeof(levelNames[0]); // number of levels
 
 // bounds for error checking
-const float moistureBounds[] = {0, 1, 2, 3}; 
+const float moistureBounds[] = {525, 441, 357, 273}; // air -> moist -> water
 const float lightBounds[] = {0, 1, 2, 3};
 const float tempBounds[] = {0, 1, 2, 3};
 
@@ -92,6 +92,11 @@ bool ledOn = false;
 int dayStartHour;
 int nightStartHour;
 
+bool firstScrollRun = true;
+bool firstInstantRun = true;
+
+State previousState = SETUP;
+
 // reset all sensor data
 void resetSensorValues()
 {
@@ -99,6 +104,16 @@ void resetSensorValues()
     light = 0;
     temp = 0;
     numMeasurements = 0;
+}
+
+// reset all error flags
+void clearErrorFlags() {
+    moistureLowError = false;
+    moistureHighError = false;
+    lightLowError = false;
+    lightHighError = false;
+    tempLowError = false;
+    tempHighError = false;
 }
 
 // allow user to select a level
@@ -203,10 +218,10 @@ void checkForError()
     float avgTemp = temp / numMeasurements;
 
     // moisture bounds check
-    if (avgMoisture < moistureBounds[moistureLevel]) {
+    if (avgMoisture > moistureBounds[moistureLevel]) {
             moistureLowError = true;
             currentState = ERROR;
-    } else if (avgMoisture > moistureBounds[moistureLevel + 1]) {
+    } else if (avgMoisture < moistureBounds[moistureLevel + 1]) {
         moistureHighError = true;
         currentState = ERROR;
     }
@@ -232,8 +247,8 @@ void checkForError()
     resetSensorValues();
 }
 
-// build error message and write to lcd
-String write_error(int line)
+// build error message string
+String build_error()
 {
     String error = "";
     int numErrors = 0;
@@ -245,33 +260,41 @@ String write_error(int line)
     
     if (moistureHighError) {
         if (numErrors > 0) error += ", ";
-        error += "High Moisture";
+        error += "Too Soggy!";
         numErrors++;
     }
 
     if (lightLowError) {
         if (numErrors > 0) error += ", ";
-        error += "Low Light";
+        error += "Let me sunbathe!";
         numErrors ++;
     }
 
     if (lightHighError) {
         if (numErrors > 0) error += ", ";
-        error += "High Light";
+        error += "I'm Blinded!";
         numErrors++;
     }
 
     if (tempLowError) {
         if (numErrors > 0) error += ", ";
-        error += "Low Temperature";
+        error += "I'm freezing!";
         numErrors ++;
     }
     
     if (tempHighError) {
         if (numErrors > 0) error += ", ";
-        error += "High Temperature";
+        error += "I'm burning!";
         numErrors++;
     }
+
+    return error;
+}
+
+// build error message and write to lcd
+String write_error(int line)
+{
+    String error = build_error();
 
     if (lcd_write(&lcd, error, line)) {
         return error;
@@ -311,10 +334,13 @@ void checkSensorsAndErrors()
 void setup()
 {
     Serial.begin(9600);
+    Wire.begin();
 
     while (!rtc.begin()) {
         continue;
     }
+
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
 
     lcd_setup(&lcd, true);
     pinMode(LED, OUTPUT);
@@ -336,6 +362,17 @@ void loop()
         daytime = true;
     } else {
         daytime = false;
+    }
+
+    if (currentState != previousState) {
+        if (currentState == IDLE) {
+            lcd.backlight();
+            lcd.clear();
+            lcd_write(&lcd, "I'm OK! (^_^)", 0);
+            idleStartTime = millis();
+            lcdOn = true;
+        }
+        previousState = currentState;
     }
 
     switch (currentState) {
@@ -374,17 +411,6 @@ void loop()
         checkSensorsAndErrors();
 
         if (!hasError()) {
-            static bool firstIdleRun = true;
-
-            // initialisation stuff if the system has JUST moved to this state
-            if (firstIdleRun) {
-            lcd.backlight();
-            lcd.clear();
-            lcd_write(&lcd, "I'm OK! (^_^)", 0);
-            idleStartTime = millis();
-            lcdOn = true;
-            firstIdleRun = false;
-            }
 
             // turn off lcd after 5 seconds of inactivity
             if (lcdOn && millis() - idleStartTime >= 5000) {
@@ -400,6 +426,9 @@ void loop()
             }
 
         } else {
+            errorSubState = ERROR_SCROLL;
+            firstScrollRun = true;
+            firstInstantRun = true;
             currentState = ERROR;
         }
         break;
@@ -409,31 +438,20 @@ void loop()
 
         // get out of the error state if there's no error
         if (!hasError()) {
+            digitalWrite(LED, LOW);
+            ledOn = false;
             currentState = IDLE;
             break;
         }
 
         static String errorMsg;
         static unsigned long shiftTime;
-        static bool firstErrorRun = true;
 
         static int instantMeasurementType = 0;
         static int lastDisplayedType = -1;
         static float instantMoisture = 0;
         static float instantLight = 0;
         static float instantTemp = 0;
-
-        // initialisation stuff if the system has JUST moved to this state
-        if (firstErrorRun) {
-            lcd.backlight();
-            lcd.clear();
-            errorMsg = write_error(0);
-            lcdOn = true;
-            errorStartTime = millis();
-            shiftTime = millis();
-            errorSubState = ERROR_SCROLL;
-            firstErrorRun = false;
-        }
 
         // turn led on if it's daytime
         if (daytime && !ledOn) {
@@ -444,8 +462,21 @@ void loop()
         // system starts in ERROR_SCROLL by default
         switch (errorSubState) {
             case ERROR_INSTANT_MEASUREMENT:
+                if (firstInstantRun) {
+                    lcd.clear();
+                    lastDisplayedType = -1;
+                    instantMeasurementType = 0;
+                    instantMoisture = analogRead(MOISTURE);
+                    instantLight = analogRead(LIGHT);
+                    instantTemp = analogRead(TEMP);
+                    lcd.backlight();
+                    lcdOn = true;
+                    firstInstantRun = false;
+                }
+
                 if (instantMeasurementType != lastDisplayedType) {
                     lcd.clear();
+                    firstInstantRun = false;
                     String measurementType;
                     float currentValue;
                     float idealValue;
@@ -454,22 +485,23 @@ void loop()
                         case 0:
                             measurementType = "Moisture";
                             currentValue = instantMoisture;
-                            idealValue = moistureBounds[moistureLevel + 1];
+                            idealValue = (moistureBounds[moistureLevel] + moistureBounds[moistureLevel + 1]) / 2;
                             break;
                         case 1:
                             measurementType = "Light";
                             currentValue = instantLight;
-                            idealValue = lightBounds[lightLevel + 1];
+                            idealValue = (lightBounds[lightLevel + 1] - lightBounds[lightLevel]) / 2;
                             break;
                         case 2:
                             measurementType = "Temperature";
                             currentValue = instantTemp;
-                            idealValue = tempBounds[tempLevel + 1];
+                            idealValue = (tempBounds[tempLevel + 1] - tempBounds[tempLevel]) / 2;
                             break;
                     }
 
                     lcd_write(&lcd, measurementType, 0);
-                    lcd_write(&lcd, String(currentValue, 0) + " vs " + String(idealValue, 0) + " ideal", 1);
+                    float signedPercentageDifference = ((currentValue - idealValue) / idealValue) * 100;
+                    lcd_write(&lcd, String(signedPercentageDifference, 1) + "% from ideal", 1);
                     lastDisplayedType = instantMeasurementType;
                 }
                 
@@ -482,12 +514,23 @@ void loop()
                 if (isButClicked(&leftBut, LEFT_BUTTON_PIN)) {
                     lastDisplayedType = -1;
                     errorSubState = ERROR_SCROLL;
-                    firstErrorRun = true;
+                    firstScrollRun = true;
                 }
                 break;
 
             case ERROR_SCROLL:
+                if (firstScrollRun) {
+                    lcd.backlight();
+                    lcd.clear();
+                    errorMsg = write_error(0);
+                    lcdOn = true;
+                    errorStartTime = millis();
+                    shiftTime = millis();
+                    firstScrollRun = false;
+                }
+                
                 if (millis() - shiftTime >= 750 && errorMsg.length() > 0) {
+                    errorMsg = build_error();
                     shift_text(&lcd, errorMsg, 0);
                     shiftTime = millis();
                 }
@@ -502,12 +545,15 @@ void loop()
                         lcd.backlight();
                         lcdOn = true;
                         errorStartTime = millis();
+
                     } else {
                         resetSensorValues();
+                        clearErrorFlags();
                         currentState = IDLE;
                         digitalWrite(LED, LOW);
                         ledOn = false;
-                        firstErrorRun = true;
+                        firstScrollRun = true;
+                        firstInstantRun = true;
                     }
                 }
 
@@ -520,6 +566,7 @@ void loop()
                     lcd.backlight();
                     lcdOn = true;
                     errorSubState = ERROR_INSTANT_MEASUREMENT;
+                    firstInstantRun = true;
                 }
                 break;
         }
