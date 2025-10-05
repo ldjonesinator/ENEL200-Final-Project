@@ -51,7 +51,7 @@ const int numLevels = sizeof(levelNames) / sizeof(levelNames[0]); // number of l
 // bounds for error checking
 const float moistureBounds[] = {525, 441, 357, 273}; // air -> moist -> water
 const float lightBounds[] = {0, 1, 2, 3};
-const float tempBounds[] = {0, 1, 2, 3};
+const float tempBounds[] = {10, 20, 25, 30}; // low -> medium -> high
 
 // timing intervals
 const unsigned long SENSOR_CHECK_INTERVAL_SEC = 10;
@@ -107,7 +107,8 @@ void resetSensorValues()
 }
 
 // reset all error flags
-void clearErrorFlags() {
+void clearErrorFlags()
+{
     moistureLowError = false;
     moistureHighError = false;
     lightLowError = false;
@@ -411,7 +412,6 @@ void loop()
         checkSensorsAndErrors();
 
         if (!hasError()) {
-
             // turn off lcd after 5 seconds of inactivity
             if (lcdOn && millis() - idleStartTime >= 5000) {
             lcd.noBacklight();
@@ -490,12 +490,12 @@ void loop()
                         case 1:
                             measurementType = "Light";
                             currentValue = instantLight;
-                            idealValue = (lightBounds[lightLevel + 1] - lightBounds[lightLevel]) / 2;
+                            idealValue = (lightBounds[lightLevel] + lightBounds[lightLevel + 1]) / 2;
                             break;
                         case 2:
                             measurementType = "Temperature";
                             currentValue = instantTemp;
-                            idealValue = (tempBounds[tempLevel + 1] - tempBounds[tempLevel]) / 2;
+                            idealValue = (tempBounds[tempLevel] + tempBounds[tempLevel + 1]) / 2;
                             break;
                     }
 
@@ -520,7 +520,10 @@ void loop()
 
             case ERROR_SCROLL:
                 if (firstScrollRun) {
-                    lcd.backlight();
+                    daytime = false;
+                    if (daytime) {
+                        lcd.backlight();
+                    }
                     lcd.clear();
                     errorMsg = write_error(0);
                     lcdOn = true;
