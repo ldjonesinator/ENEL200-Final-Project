@@ -16,6 +16,7 @@ ErrorSubState errorSubState; // current sub-state in the ERROR state
 bool firstErrorScrollRun = true;
 bool firstErrorInstantRun = true;
 
+
 // allow user to select a level (LOW, MED or HIGH)
 Level getLevel()
 {
@@ -27,28 +28,17 @@ Level getLevel()
     while (1) {
         // left button confirms level
         if (isButClicked(&leftBut, LEFT_BUTTON_PIN)) {
-        return currentLevel;
+            return currentLevel;
         }
 
         // right button cycles through levels
         if (isButClicked(&rightBut, RIGHT_BUTTON_PIN)) {
-        currentLevel = (Level)(currentLevel + 1);
+            currentLevel = (Level)(currentLevel + 1);
+        }
         if (currentLevel >= numLevels) {
             currentLevel = LOWER;
         }
         lcd_write(&lcd, levelNames[currentLevel], 1);
-        }
-
-        if (digitalRead(RIGHT_BUTTON_PIN) == HIGH && !rightBut.pressed) {
-        update_button("R", HIGH);
-        } else if (digitalRead(RIGHT_BUTTON_PIN) == LOW && rightBut.pressed) {
-        update_button("R", LOW);
-        currentLevel = (Level)(currentLevel + 1);
-            if (currentLevel >= numLevels) {
-            currentLevel = LOWER;
-            }
-            lcd_write(&lcd, levelNames[currentLevel], 1);
-        }
     }
 }
 
@@ -62,23 +52,16 @@ int getHour(int startHour24, int endHour24)
     while (1) {
         // left button confirms selection
         if (isButClicked(&leftBut, LEFT_BUTTON_PIN)) {
-        return currentHour24;
+            return currentHour24;
         }
 
         // right button cycles through hours
         if (isButClicked(&rightBut, RIGHT_BUTTON_PIN)) {
-        currentHour24++;
-        if (currentHour24 > endHour24) currentHour24 = startHour24;
-        lcd_write(&lcd, hourToString(currentHour24), 1);
+            currentHour24++;
         }
-
-        if (digitalRead(RIGHT_BUTTON_PIN) == HIGH && !rightBut.pressed) {
-        update_button("R", HIGH);
-        } else if (digitalRead(RIGHT_BUTTON_PIN) == LOW && rightBut.pressed) {
-        update_button("R", LOW);
-        currentHour24++;
-        if (currentHour24 > endHour24) currentHour24 = startHour24;
-        lcd_write(&lcd, hourToString(currentHour24), 1);
+        if (currentHour24 > endHour24) {
+            currentHour24 = startHour24;
+            lcd_write(&lcd, hourToString(currentHour24), 1);
         }
     }
 }
