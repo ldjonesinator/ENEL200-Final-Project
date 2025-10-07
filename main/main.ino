@@ -65,6 +65,27 @@ int getHour(int startHour24, int endHour24)
     }
 }
 
+// prompts for the plant levels
+void plantPrompts(Level* levels, int line) {
+    const String prompts[3] = {"Soil moisture", "Light level", "Warmth"};
+    for (size_t i = 0; i < sizeof(prompts); i ++) {
+        lcd_write(&lcd, prompts[i] + "?", line);
+        levels[i] = getLevel();
+        Serial.print(prompts[i] + " set to: ");
+        Serial.println(levelNames[plantLevels[0]]);
+    }
+
+    lcd_write(&lcd, "Set day start", line);
+    dayStartHour = getHour(1, 12);
+    Serial.print("Day start hour set to ");
+    Serial.println(dayStartHour);
+
+    lcd_write(&lcd, "Set night start", line);
+    nightStartHour = getHour(13, 24);
+    Serial.print("Night start hour set to ");
+    Serial.println(nightStartHour);
+}
+
 void setup()
 {
     Serial.begin(9600);
@@ -100,30 +121,7 @@ void loop()
         case SETUP:
         lcd.backlight();
 
-        lcd_write(&lcd, "Soil moisture?", 0);
-        moistureLevel = getLevel();
-        Serial.print("Soil moisture set to: ");
-        Serial.println(levelNames[moistureLevel]);
-
-        lcd_write(&lcd, "Light level?", 0);
-        lightLevel = getLevel();
-        Serial.print("Light level set to: ");
-        Serial.println(levelNames[lightLevel]);
-
-        lcd_write(&lcd, "Warmth?", 0);
-        tempLevel = getLevel();
-        Serial.print("Warmth set to: ");
-        Serial.println(levelNames[tempLevel]);
-
-        lcd_write(&lcd, "Set day start", 0);
-        dayStartHour = getHour(1, 12);
-        Serial.print("Day start hour set to ");
-        Serial.println(dayStartHour);
-
-        lcd_write(&lcd, "Set night start", 0);
-        nightStartHour = getHour(13, 24);
-        Serial.print("Night start hour set to ");
-        Serial.println(nightStartHour);
+        plantPrompts(plantLevels, 0);
 
         currentState = IDLE;
         break;
@@ -205,17 +203,17 @@ void loop()
                         case 0:
                             measurementType = "Moisture";
                             currentValue = instantMoisture;
-                            idealValue = (moistureBounds[moistureLevel] + moistureBounds[moistureLevel + 1]) / 2;
+                            idealValue = (moistureBounds[plantLevels[0]] + moistureBounds[plantLevels[0] + 1]) / 2;
                             break;
                         case 1:
                             measurementType = "Light";
                             currentValue = instantLight;
-                            idealValue = (lightBounds[lightLevel] + lightBounds[lightLevel + 1]) / 2;
+                            idealValue = (lightBounds[plantLevels[1]] + lightBounds[plantLevels[1] + 1]) / 2;
                             break;
                         case 2:
                             measurementType = "Temperature";
                             currentValue = instantTemp;
-                            idealValue = (tempBounds[tempLevel] + tempBounds[tempLevel + 1]) / 2;
+                            idealValue = (tempBounds[plantLevels[2]] + tempBounds[plantLevels[2] + 1]) / 2;
                             break;
                     }
 

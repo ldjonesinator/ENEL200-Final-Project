@@ -5,9 +5,11 @@ const int VDD = 5;
 const int ADC_RESOLUTION = 1024;
 const int RESISTOR = 10000; // 10kOhms
 
-Level moistureLevel; // user selected moisture level
-Level lightLevel; // user selected light level
-Level tempLevel; // user selected temp level
+// user selected levels (moisture, light, temp)
+Level plantLevels[3];
+// Level plantLevels[0]; // user selected moisture level
+// Level plantLevels[1]; // user selected light level
+// Level plantLevels[2]; // user selected temp level
 
 // measurement tracking
 int numMeasurements = 0; // counts the number of measurements (used for averaging)
@@ -79,28 +81,28 @@ void checkForError()
     float avgTemp = temp / numMeasurements;
 
     // moisture bounds check
-    if (avgMoisture > moistureBounds[moistureLevel]) {
+    if (avgMoisture > moistureBounds[plantLevels[0]]) {
             moistureLowError = true;
             currentState = ERROR;
-    } else if (avgMoisture < moistureBounds[moistureLevel + 1]) {
+    } else if (avgMoisture < moistureBounds[plantLevels[0] + 1]) {
         moistureHighError = true;
         currentState = ERROR;
     }
 
     // light bounds check
-    if (avgLight > lightBounds[lightLevel]) {
+    if (avgLight > lightBounds[plantLevels[1]]) {
         lightLowError = true;
         currentState = ERROR;
-    } else if (avgLight < lightBounds[lightLevel + 1]) {
+    } else if (avgLight < lightBounds[plantLevels[1] + 1]) {
         lightHighError = true;
         currentState = ERROR;
     }
 
     // temp bounds check
-    if (avgTemp > tempBounds[tempLevel]) {
+    if (avgTemp > tempBounds[plantLevels[2]]) {
         tempLowError = true;
         currentState = ERROR;
-    } else if (avgTemp < tempBounds[tempLevel + 1]) {
+    } else if (avgTemp < tempBounds[plantLevels[2] + 1]) {
         tempHighError = true;
         currentState = ERROR;
     }

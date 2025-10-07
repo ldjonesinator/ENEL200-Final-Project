@@ -24,9 +24,10 @@ constexpr float moistureBounds[] = {525, 490, 370, 273}; // air -> moist -> wate
 constexpr float lightBounds[] = {1000, 275, 60, 0}; // low -> medium -> high
 constexpr float tempBounds[] = {1000, 187, 175, 0}; // low (10-20 degrees) -> medium (20-25 degrees) -> high (25-30 degrees)
 
-extern Level moistureLevel;
-extern Level lightLevel;
-extern Level tempLevel;
+extern Level plantLevels[3];
+// extern Level moistureLevel;
+// extern Level lightLevel;
+// extern Level tempLevel;
 
 extern bool moistureLowError;
 extern bool moistureHighError;
