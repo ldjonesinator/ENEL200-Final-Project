@@ -17,7 +17,7 @@ typedef struct {
 extern Button leftBut; // left button object
 extern Button rightBut; // right button object
 
-void initialise_button(Button* button, String label);
+void initialise_button(Button* button, String label, int pin);
 void update_button(String label, bool isPressed);
 void update_long_presses();
 bool isButClicked(Button* button, int buttonPin);

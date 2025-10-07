@@ -28,12 +28,13 @@ static void set_timer_start(String label) {
     }
 }
 
-void initialise_button(Button* button, String label) {
+void initialise_button(Button* button, String label, int pin) {
     // sets the button label, puts button in default state and registers it
     button->label = label;
     button->pressed = false;
     button->longPress = false;
     register_button(button);
+    pinMode(pin, INPUT);
 }
 
 void update_button(String label, bool isPressed) {

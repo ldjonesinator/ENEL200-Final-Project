@@ -16,7 +16,6 @@ ErrorSubState errorSubState; // current sub-state in the ERROR state
 bool firstErrorScrollRun = true;
 bool firstErrorInstantRun = true;
 
-
 // allow user to select a level (LOW, MED or HIGH)
 Level getLevel()
 {
@@ -80,10 +79,8 @@ void setup()
     lcd_setup(&lcd, true);
     pinMode(LED, OUTPUT);
 
-    pinMode(LEFT_BUTTON_PIN, INPUT);
-    pinMode(RIGHT_BUTTON_PIN, INPUT);
-    initialise_button(&leftBut, "L");
-    initialise_button(&rightBut, "R");
+    initialise_button(&leftBut, "L", LEFT_BUTTON_PIN);
+    initialise_button(&rightBut, "R", RIGHT_BUTTON_PIN);
 
     currentState = SETUP; // start system in setup
 }
