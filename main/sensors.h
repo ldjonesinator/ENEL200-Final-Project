@@ -2,7 +2,7 @@
 #define SENSORS_H
 
 #include <Arduino.h>
-#include "main.h"
+#include "state.h"
 
 // sensor pins
 #define LIGHT A0 // light sensor

@@ -16,7 +16,7 @@ ErrorSubState errorSubState; // current sub-state in the ERROR state
 bool firstErrorScrollRun = true;
 bool firstErrorInstantRun = true;
 
-// allow user to select a level
+// allow user to select a level (LOW, MED or HIGH)
 Level getLevel()
 {
     char choice;
