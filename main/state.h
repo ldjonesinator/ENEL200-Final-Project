@@ -1,5 +1,5 @@
-#ifndef MAIN_H
-#define MAIN_H
+#ifndef STATE_H
+#define STATE_H
 
 typedef enum {
     SETUP,
@@ -14,4 +14,4 @@ typedef enum {
 
 extern State currentState; // current system state
 
-#endif // MAIN_H
+#endif // STATE_H

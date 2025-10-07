@@ -1,5 +1,5 @@
 #include "lcd.h"
-#include "sensors.h"
+#include "error.h"
 
 const int LCD_COLS = 16;
 const int LCD_ROWS = 2;
@@ -66,33 +66,43 @@ String build_error()
     }
     
     if (moistureHighError) {
-        if (numErrors > 0) error += ", ";
-        error += "Too Soggy!";
-        numErrors++;
+        if (numErrors > 0) {
+            error += ", ";
+            error += "Too Soggy!";
+            numErrors++;
+        }
     }
 
     if (lightLowError) {
-        if (numErrors > 0) error += ", ";
-        error += "Let me sunbathe!";
-        numErrors ++;
+        if (numErrors > 0) {
+            error += ", ";
+            error += "Let me sunbathe!";
+            numErrors ++;
+        }
     }
 
     if (lightHighError) {
-        if (numErrors > 0) error += ", ";
-        error += "I'm Blinded!";
-        numErrors++;
+        if (numErrors > 0) {
+            error += ", ";
+            error += "I'm Blinded!";
+            numErrors++;
+        }
     }
 
     if (tempLowError) {
-        if (numErrors > 0) error += ", ";
-        error += "I'm freezing!";
-        numErrors ++;
+        if (numErrors > 0) { 
+            error += ", ";
+            error += "I'm freezing!";
+            numErrors ++;
+        }
     }
     
     if (tempHighError) {
-        if (numErrors > 0) error += ", ";
-        error += "I'm burning!";
-        numErrors++;
+        if (numErrors > 0) {
+            error += ", ";
+            error += "I'm burning!";
+            numErrors++;
+        }
     }
 
     return error;

@@ -1,4 +1,4 @@
-#include "sensors.h"
+#include "error.h"
 #include "time.h"
 
 const int VDD = 5;
@@ -7,9 +7,6 @@ const int RESISTOR = 10000; // 10kOhms
 
 // user selected levels (moisture, light, temp)
 Level plantLevels[3];
-// Level plantLevels[0]; // user selected moisture level
-// Level plantLevels[1]; // user selected light level
-// Level plantLevels[2]; // user selected temp level
 
 // measurement tracking
 int numMeasurements = 0; // counts the number of measurements (used for averaging)

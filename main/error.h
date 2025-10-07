@@ -1,5 +1,5 @@
-#ifndef SENSORS_H
-#define SENSORS_H
+#ifndef ERROR_H
+#define ERROR_H
 
 #include <Arduino.h>
 #include "state.h"
@@ -45,4 +45,4 @@ void clearErrorFlags(); // reset all error flags
 void checkForError(); // check averages and set error flags
 void checkSensorsAndErrors(); // check sensors and check for error if it's time to do so
 
-#endif // SENSORS_H
+#endif // ERROR_H
