@@ -49,9 +49,9 @@ const char* levelNames[] = {"Low", "Medium", "High"}; // level names
 const int numLevels = sizeof(levelNames) / sizeof(levelNames[0]); // number of levels
 
 // bounds for error checking
-const float moistureBounds[] = {525, 441, 357, 273}; // air -> moist -> water
-const float lightBounds[] = {0, 1, 2, 3};
-const float tempBounds[] = {10, 20, 25, 30}; // low -> medium -> high
+const float moistureBounds[] = {525, 490, 370, 273}; // air -> moist -> water
+const float lightBounds[] = {1000, 275, 60, 0}; // low -> medium -> high
+const float tempBounds[] = {1000, 187, 175, 0}; // low (10-20 degrees) -> medium (20-25 degrees) -> high (25-30 degrees)
 
 // timing intervals
 const unsigned long SENSOR_CHECK_INTERVAL_SEC = 10;
@@ -214,6 +214,7 @@ void checkSensors()
 // check averages and set error flags
 void checkForError()
 {
+    clearErrorFlags();
     float avgMoisture = moisture / numMeasurements;
     float avgLight = light / numMeasurements;
     float avgTemp = temp / numMeasurements;
@@ -228,19 +229,19 @@ void checkForError()
     }
 
     // light bounds check
-    if (avgLight < lightBounds[lightLevel]) {
+    if (avgLight > lightBounds[lightLevel]) {
         lightLowError = true;
         currentState = ERROR;
-    } else if (avgLight > lightBounds[lightLevel + 1]) {
+    } else if (avgLight < lightBounds[lightLevel + 1]) {
         lightHighError = true;
         currentState = ERROR;
     }
 
     // temp bounds check
-    if (avgTemp < tempBounds[tempLevel]) {
+    if (avgTemp > tempBounds[tempLevel]) {
         tempLowError = true;
         currentState = ERROR;
-    } else if (avgTemp > tempBounds[tempLevel + 1]) {
+    } else if (avgTemp < tempBounds[tempLevel + 1]) {
         tempHighError = true;
         currentState = ERROR;
     }
@@ -363,17 +364,6 @@ void loop()
         daytime = true;
     } else {
         daytime = false;
-    }
-
-    if (currentState != previousState) {
-        if (currentState == IDLE) {
-            lcd.backlight();
-            lcd.clear();
-            lcd_write(&lcd, "I'm OK! (^_^)", 0);
-            idleStartTime = millis();
-            lcdOn = true;
-        }
-        previousState = currentState;
     }
 
     switch (currentState) {
@@ -520,7 +510,6 @@ void loop()
 
             case ERROR_SCROLL:
                 if (firstScrollRun) {
-                    daytime = false;
                     if (daytime) {
                         lcd.backlight();
                     }
@@ -553,6 +542,8 @@ void loop()
                         resetSensorValues();
                         clearErrorFlags();
                         currentState = IDLE;
+                        idleStartTime = millis();
+                        lcd.backlight();
                         digitalWrite(LED, LOW);
                         ledOn = false;
                         firstScrollRun = true;
@@ -574,5 +565,16 @@ void loop()
                 break;
         }
         break;
+    }
+
+    if (currentState != previousState) {
+        if (currentState == IDLE) {
+            lcd.backlight();
+            lcd.clear();
+            lcd_write(&lcd, "I'm OK! (^_^)", 0);
+            idleStartTime = millis();
+            lcdOn = true;
+        }
+        previousState = currentState;
     }
 }
