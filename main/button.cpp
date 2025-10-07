@@ -1,5 +1,3 @@
-#include <stdint.h>
-
 #include "button.h"
 
 const uint32_t longPress_TIME = 3000; // 3 seconds
@@ -7,6 +5,8 @@ const uint8_t MAX_BUTTONS = 10;
 static Button* allButtons[MAX_BUTTONS];
 static uint8_t numButtons = 0;
 
+Button leftBut;
+Button rightBut;
 
 static void register_button(Button* button) {
     if (numButtons < MAX_BUTTONS) { // don't have to worry about going over this amount

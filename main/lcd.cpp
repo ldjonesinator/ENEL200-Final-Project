@@ -1,18 +1,14 @@
 #include "lcd.h"
-#include <Wire.h>
-#include <hd44780.h>
-#include <hd44780ioClass/hd44780_I2Cexp.h>
-
-
+#include "sensors.h"
 
 const int LCD_COLS = 16;
 const int LCD_ROWS = 2;
 static int stringIndexes[LCD_ROWS];
 
-
+hd44780_I2Cexp lcd; // lcd object
+bool lcdOn = false;
 
 void lcd_setup(const hd44780_I2Cexp* lcd, bool backlight) {
-  // returns an lcd variable that is set up for use
     int status = lcd->begin(LCD_COLS, LCD_ROWS);
     if (status != 0) {
         Serial.println("There was an error with the LCD");
@@ -27,7 +23,6 @@ void lcd_setup(const hd44780_I2Cexp* lcd, bool backlight) {
 }
 
 bool lcd_write(const hd44780_I2Cexp* lcd, String text, int line) {
-  // returns if the line is too long and puts up to the first 16 characters of a string on an LCD
     bool islong;
     lcd->setCursor(0, line);
     lcd->print("                ");
@@ -44,7 +39,6 @@ bool lcd_write(const hd44780_I2Cexp* lcd, String text, int line) {
 }
 
 bool shift_text(const hd44780_I2Cexp* lcd, String text, int line) {
-    // shifts text on a line in the LCD
     bool isDoneShift = false;
     if (stringIndexes[line] == text.length() - 17) {
         isDoneShift = true;
@@ -59,4 +53,57 @@ bool shift_text(const hd44780_I2Cexp* lcd, String text, int line) {
 
     stringIndexes[line] ++;
     return isDoneShift;
+}
+
+String build_error()
+{
+    String error = "";
+    int numErrors = 0;
+
+    if (moistureLowError) {
+        error += "Low Moisture";
+        numErrors ++;
+    }
+    
+    if (moistureHighError) {
+        if (numErrors > 0) error += ", ";
+        error += "Too Soggy!";
+        numErrors++;
+    }
+
+    if (lightLowError) {
+        if (numErrors > 0) error += ", ";
+        error += "Let me sunbathe!";
+        numErrors ++;
+    }
+
+    if (lightHighError) {
+        if (numErrors > 0) error += ", ";
+        error += "I'm Blinded!";
+        numErrors++;
+    }
+
+    if (tempLowError) {
+        if (numErrors > 0) error += ", ";
+        error += "I'm freezing!";
+        numErrors ++;
+    }
+    
+    if (tempHighError) {
+        if (numErrors > 0) error += ", ";
+        error += "I'm burning!";
+        numErrors++;
+    }
+
+    return error;
+}
+
+String write_error(int line)
+{
+    String error = build_error();
+
+    if (lcd_write(&lcd, error, line)) {
+        return error;
+    }
+    return "";
 }

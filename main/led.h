@@ -3,8 +3,11 @@
 
 #include <Arduino.h>
 #include <stdint.h>
-//#include ---
+
+#define LED 4 // pin for error led
+
+extern bool ledOn;
 
 void updateLED(uint8_t ledPin, bool timeDay, bool isError);
 
-#endif //LED_H
+#endif // LED_H
