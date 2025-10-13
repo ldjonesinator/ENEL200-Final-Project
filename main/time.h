@@ -9,8 +9,8 @@ extern RTC_DS3231 rtc; // real time clock object
 extern DateTime now; // real time clock time
 
 // timing intervals
-constexpr unsigned long SENSOR_CHECK_INTERVAL_SEC = 10;
-constexpr unsigned long ERROR_CHECK_INTERVAL_SEC = 60;
+constexpr unsigned long SENSOR_CHECK_INTERVAL_SEC = 60;
+constexpr unsigned long ERROR_CHECK_INTERVAL_SEC = 1800;
 
 // timing trackers
 extern unsigned long idleStartTime;

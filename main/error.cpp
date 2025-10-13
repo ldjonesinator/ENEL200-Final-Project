@@ -1,9 +1,9 @@
-#include "sensors.h"
+#include "error.h"
 #include "time.h"
 
 const int VDD = 5;
 const int ADC_RESOLUTION = 1024;
-const int RESISTOR = 10000; // 10kOhms
+const int RESISTOR = 10000; // 10k ohms
 
 Level moistureLevel; // user selected moisture level
 Level lightLevel; // user selected light level
@@ -11,7 +11,7 @@ Level tempLevel; // user selected temp level
 
 // measurement tracking
 int numMeasurements = 0; // counts the number of measurements (used for averaging)
-float moisture = 0; // running sums for sensor readings
+float moisture = 0;
 float light = 0;
 float temp = 0;
 
@@ -22,6 +22,7 @@ bool lightLowError = false;
 bool lightHighError = false;
 bool tempLowError = false;
 bool tempHighError = false;
+int numErrors = 0;
 
 unsigned long adcToResistance(int adc_value) {
     float voltage = VDD * (float)adc_value / ADC_RESOLUTION;
@@ -49,7 +50,7 @@ void checkSensors()
 {
     moisture += analogRead(MOISTURE);
     light += analogRead(LIGHT);
-    temp += analogRead(TEMP);
+    temp += adcToResistance(analogRead(TEMP));
     numMeasurements++;
 }
 
@@ -69,6 +70,7 @@ void clearErrorFlags()
     lightHighError = false;
     tempLowError = false;
     tempHighError = false;
+    numErrors = 0;
 }
 
 void checkForError()
@@ -81,27 +83,33 @@ void checkForError()
     // moisture bounds check
     if (avgMoisture > moistureBounds[moistureLevel]) {
             moistureLowError = true;
+            numErrors++;
             currentState = ERROR;
     } else if (avgMoisture < moistureBounds[moistureLevel + 1]) {
         moistureHighError = true;
+        numErrors++;
         currentState = ERROR;
     }
 
     // light bounds check
     if (avgLight > lightBounds[lightLevel]) {
         lightLowError = true;
+        numErrors++;
         currentState = ERROR;
     } else if (avgLight < lightBounds[lightLevel + 1]) {
         lightHighError = true;
+        numErrors++;
         currentState = ERROR;
     }
 
     // temp bounds check
-    if (avgTemp > tempBounds[tempLevel]) {
+    if (avgTemp < tempBounds[tempLevel]) {
         tempLowError = true;
+        numErrors++;
         currentState = ERROR;
-    } else if (avgTemp < tempBounds[tempLevel + 1]) {
+    } else if (avgTemp > tempBounds[tempLevel + 1]) {
         tempHighError = true;
+        numErrors++;
         currentState = ERROR;
     }
 

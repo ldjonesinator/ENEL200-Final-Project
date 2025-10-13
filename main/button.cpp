@@ -62,7 +62,7 @@ void update_longPresses() {
 }
 
 bool isButClicked(Button* button, int buttonPin) {
-    if (millis() - button->startTime > 100) { // 50 ms to account for bouncing
+    if (millis() - button->startTime > 100) { // 100 ms to account for bouncing
         if (digitalRead(buttonPin) == HIGH && !button->pressed) { // when you select the option
             update_button(button->label, HIGH);
         } else if (digitalRead(buttonPin) == LOW && button->pressed) {

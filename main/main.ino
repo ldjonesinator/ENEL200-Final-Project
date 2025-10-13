@@ -6,7 +6,7 @@
 #include "lcd.h"
 #include "button.h"
 #include "led.h"
-#include "sensors.h"
+#include "error.h"
 #include "time.h"
 
 State currentState;
@@ -15,6 +15,7 @@ ErrorSubState errorSubState; // current sub-state in the ERROR state
 
 bool firstErrorScrollRun = true;
 bool firstErrorInstantRun = true;
+bool ifShouldShift;
 
 // allow user to select a level
 Level getLevel()
@@ -108,6 +109,7 @@ void setup()
 void loop()
 {
     now = rtc.now(); // current time
+    //Serial.println(analogRead(LIGHT));
 
     // compute whether it's currently daytime
     if (now.hour() >= dayStartHour && now.hour() <= nightStartHour) {
@@ -165,6 +167,11 @@ void loop()
             lcdOn = true;
             }
 
+            if (isButClicked(&rightBut, RIGHT_BUTTON_PIN)) {
+                resetSensorValues();
+                clearErrorFlags();
+                currentState = SETUP;
+            }
         } else {
             errorSubState = ERROR_SCROLL;
             firstErrorScrollRun = true;
@@ -177,7 +184,7 @@ void loop()
         checkSensorsAndErrors();
 
         // get out of the error state if there's no error
-        if (!hasError()) {
+        if (!hasError() && errorSubState == ERROR_SCROLL) {
             digitalWrite(LED, LOW);
             ledOn = false;
             currentState = IDLE;
@@ -208,7 +215,7 @@ void loop()
                     instantMeasurementType = 0;
                     instantMoisture = analogRead(MOISTURE);
                     instantLight = analogRead(LIGHT);
-                    instantTemp = analogRead(TEMP);
+                    instantTemp = adcToResistance(analogRead(TEMP));
                     lcd.backlight();
                     lcdOn = true;
                     firstErrorInstantRun = false;
@@ -235,12 +242,26 @@ void loop()
                         case 2:
                             measurementType = "Temperature";
                             currentValue = instantTemp;
-                            idealValue = (tempBounds[tempLevel] + tempBounds[tempLevel + 1]) / 2;
+                            idealValue = (tempBounds[tempLevel + 1] + tempBounds[tempLevel]) / 2;
                             break;
                     }
 
                     lcd_write(&lcd, measurementType, 0);
-                    float signedPercentageDifference = ((currentValue - idealValue) / idealValue) * 100;
+                    
+                    float signedPercentageDifference;
+
+                    switch (instantMeasurementType) {
+                        case 0: // Moisture
+                            signedPercentageDifference = ((idealValue - currentValue) / idealValue) * 100;
+                            break;
+                        case 1: // Light
+                            signedPercentageDifference = ((idealValue - currentValue) / idealValue) * 100;
+                            break;
+                        case 2: // Temperature
+                            signedPercentageDifference = ((currentValue - idealValue) / idealValue) * 100;
+                            break;
+                    }
+
                     lcd_write(&lcd, String(signedPercentageDifference, 1) + "% from ideal", 1);
                     lastDisplayedType = instantMeasurementType;
                 }
@@ -264,15 +285,24 @@ void loop()
                         lcd.backlight();
                     }
                     lcd.clear();
-                    errorMsg = write_error(0);
+                    errorMsg = build_error();
                     lcdOn = true;
                     errorStartTime = millis();
                     shiftTime = millis();
                     firstErrorScrollRun = false;
+                    ifShouldShift = lcd_write(&lcd, errorMsg, 0);
                 }
-                
-                if (millis() - shiftTime >= 750 && errorMsg.length() > 0) {
-                    errorMsg = build_error();
+
+                String newMsg = build_error();
+                if (newMsg != errorMsg) {
+                    errorMsg = newMsg;
+                    lcd.clear();
+                    ifShouldShift = lcd_write(&lcd, errorMsg, 0);
+                    shiftTime = millis();
+                }
+
+                // Only scroll if still needed
+                if (ifShouldShift && millis() - shiftTime >= 700) {
                     shift_text(&lcd, errorMsg, 0);
                     shiftTime = millis();
                 }
@@ -302,9 +332,6 @@ void loop()
                 }
 
                 if (isButClicked(&rightBut, RIGHT_BUTTON_PIN)) {
-                    instantMoisture = analogRead(MOISTURE);
-                    instantLight = analogRead(LIGHT);
-                    instantTemp = analogRead(TEMP);
                     instantMeasurementType = 0;
                     lastDisplayedType = -1;
                     lcd.backlight();

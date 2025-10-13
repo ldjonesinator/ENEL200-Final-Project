@@ -1,10 +1,9 @@
-#ifndef SENSORS_H
-#define SENSORS_H
+#ifndef ERROR_H
+#define ERROR_H
 
 #include <Arduino.h>
-#include "main.h"
+#include "state.h"
 
-// sensor pins
 #define LIGHT A0 // light sensor
 #define MOISTURE A1 // moisture sensor
 #define TEMP A2 // temperature sensor
@@ -21,8 +20,8 @@ constexpr int numLevels = sizeof(levelNames) / sizeof(levelNames[0]); // number 
 
 // bounds for error checking
 constexpr float moistureBounds[] = {525, 490, 370, 273}; // air -> moist -> water
-constexpr float lightBounds[] = {1000, 275, 60, 0}; // low -> medium -> high
-constexpr float tempBounds[] = {1000, 187, 175, 0}; // low (10-20 degrees) -> medium (20-25 degrees) -> high (25-30 degrees)
+constexpr float lightBounds[] = {1000, 170, 60, 0}; // low -> medium -> high
+constexpr float tempBounds[] = {8500, 9491, 10205, 11000}; // low (10-18 degrees) -> medium (18-22 degrees) -> high (22-30 degrees)
 
 extern Level moistureLevel;
 extern Level lightLevel;
@@ -34,6 +33,7 @@ extern bool lightLowError;
 extern bool lightHighError;
 extern bool tempLowError;
 extern bool tempHighError;
+extern int numErrors;
 
 unsigned long adcToResistance(int adc_value);
 float takeResistanceSamples(const int tempPin, const int sample_size);
@@ -44,4 +44,4 @@ void clearErrorFlags(); // reset all error flags
 void checkForError(); // check averages and set error flags
 void checkSensorsAndErrors(); // check sensors and check for error if it's time to do so
 
-#endif // SENSORS_H
+#endif // ERROR_H

@@ -1,5 +1,5 @@
 #include "lcd.h"
-#include "sensors.h"
+#include "error.h"
 
 const int LCD_COLS = 16;
 const int LCD_ROWS = 2;
@@ -61,7 +61,7 @@ String build_error()
     int numErrors = 0;
 
     if (moistureLowError) {
-        error += "Low Moisture";
+        error += "Water me!";
         numErrors ++;
     }
     
