@@ -24,12 +24,14 @@ bool tempLowError = false;
 bool tempHighError = false;
 int numErrors = 0;
 
-unsigned long adcToResistance(int adc_value) {
+unsigned long adcToResistance(int adc_value)
+{
     float voltage = VDD * (float)adc_value / ADC_RESOLUTION;
     return (long)(voltage * RESISTOR / (VDD - voltage));
 }
 
-float takeResistanceSamples(const int tempPin, const int sample_size) {
+float takeResistanceSamples(const int tempPin, const int sample_size)
+{
     static float total = 0;
     static int sample_num = 0;
     total += adcToResistance(analogRead(tempPin));

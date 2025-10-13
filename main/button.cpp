@@ -8,14 +8,16 @@ static uint8_t numButtons = 0;
 Button leftBut;
 Button rightBut;
 
-static void register_button(Button* button) {
+static void register_button(Button* button)
+{
     if (numButtons < MAX_BUTTONS) { // don't have to worry about going over this amount
         allButtons[numButtons] = button;
         numButtons ++;
     }
 }
 
-static void set_timer_start(String label) {
+static void set_timer_start(String label)
+{
     // updates the start time if the button is pressed
     size_t i = 0;
     bool isFound = false;
@@ -28,7 +30,8 @@ static void set_timer_start(String label) {
     }
 }
 
-void initialise_button(Button* button, String label) {
+void initialise_button(Button* button, String label)
+{
     // sets the button label, puts button in default state and registers it
     button->label = label;
     button->pressed = false;
@@ -36,7 +39,8 @@ void initialise_button(Button* button, String label) {
     register_button(button);
 }
 
-void update_button(String label, bool isPressed) {
+void update_button(String label, bool isPressed)
+{
     // it will update the button's state and start time depending on if it's pressed
     size_t i = 0;
     bool isFound = false;
@@ -50,7 +54,8 @@ void update_button(String label, bool isPressed) {
     }
 }
 
-void update_longPresses() {
+void update_longPresses()
+{
     // checks every button to see if its been long pressed
     for (size_t i = 0; i < numButtons; i ++) {
         if (allButtons[i]->pressed && millis() - allButtons[i]->startTime >= longPress_TIME) {
@@ -61,7 +66,8 @@ void update_longPresses() {
     }
 }
 
-bool isButClicked(Button* button, int buttonPin) {
+bool isButClicked(Button* button, int buttonPin)
+{
     if (millis() - button->startTime > 100) { // 100 ms to account for bouncing
         if (digitalRead(buttonPin) == HIGH && !button->pressed) { // when you select the option
             update_button(button->label, HIGH);
