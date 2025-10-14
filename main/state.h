@@ -12,6 +12,6 @@ typedef enum {
     ERROR_INSTANT_MEASUREMENT
 } ErrorSubState;
 
-extern State currentState; // current system state
+extern State currentState; // Current montitor state
 
 #endif // STATE_H

@@ -2,15 +2,13 @@
 
 bool ledOn = false;
 
-void updateLED(uint8_t ledPin, bool timeDay, bool isError) // updates the LED depending on the time or if there is an error 
+void updateLED(bool daytime, State currentState)
 {
-    if (timeDay) { // a function that returns true if it is daytime
-        if (isError) { // turns LED on
-            digitalWrite(ledPin, HIGH);
-        } else { // turns LED off
-            digitalWrite(ledPin, LOW);
-        }
-    } else { // turns LED off
-        digitalWrite(ledPin, LOW);
+    if (daytime && currentState == ERROR && !ledOn) {
+        digitalWrite(LED, HIGH);
+        ledOn = true;
+    } else if (currentState == SETUP || currentState == IDLE && ledOn) {
+        digitalWrite(LED, LOW);
+        ledOn = false;
     }
 }

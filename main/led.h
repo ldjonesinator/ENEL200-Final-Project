@@ -3,11 +3,13 @@
 
 #include <Arduino.h>
 #include <stdint.h>
+#include "state.h"
 
-#define LED 4 // pin for error led
+#define LED 4
 
+// Tracks whether the LED is on
 extern bool ledOn;
 
-void updateLED(uint8_t ledPin, bool timeDay, bool isError);
+void updateLED(bool daytime, State currentState); // Updates the LED depending on the time and if there is an error 
 
 #endif // LED_H

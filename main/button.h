@@ -4,9 +4,11 @@
 #include <Arduino.h>
 #include <stdint.h>
 
-#define LEFT_BUTTON_PIN 2 // pin for left button
-#define RIGHT_BUTTON_PIN 3 // pin for right button
+// Button pins
+#define LEFT_BUTTON_PIN 2
+#define RIGHT_BUTTON_PIN 3
 
+// Button struct
 typedef struct {
     String label;
     bool pressed;
@@ -14,12 +16,12 @@ typedef struct {
     uint64_t startTime;
 } Button;
 
-extern Button leftBut; // left button object
-extern Button rightBut; // right button object
+// Objects for left and right buttons
+extern Button leftBut;
+extern Button rightBut;
 
-void initialise_button(Button* button, String label);
-void update_button(String label, bool isPressed);
-void update_long_presses();
-bool isButClicked(Button* button, int buttonPin);
+void initialise_button(Button* button, String label); // Initialises a button in the default state
+void update_button(String label, bool isPressed); // Updates the members of the button struct
+bool isButClicked(Button* button, int buttonPin); // Returns whether a button has been pressed
 
 #endif // BUTTON_H

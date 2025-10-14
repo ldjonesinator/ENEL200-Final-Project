@@ -5,7 +5,7 @@ const int LCD_COLS = 16;
 const int LCD_ROWS = 2;
 static int stringIndexes[LCD_ROWS];
 
-hd44780_I2Cexp lcd; // lcd object
+hd44780_I2Cexp lcd;
 bool lcdOn = false;
 
 void lcd_setup(const hd44780_I2Cexp* lcd, bool backlight) {
@@ -26,12 +26,12 @@ bool lcd_write(const hd44780_I2Cexp* lcd, String text, int line) {
     bool islong;
     lcd->setCursor(0, line);
     lcd->print("                ");
-    if (text.length() > LCD_COLS) { // line too long
+    if (text.length() > LCD_COLS) { // Line too long
         lcd->setCursor(0, line);
         lcd->print(text.substring(0, 16));
         islong = true;
     } else {
-        lcd->setCursor((LCD_COLS - text.length()) / 2, line); // spacing to center the text
+        lcd->setCursor((LCD_COLS - text.length()) / 2, line); // Spacing to center the text
         lcd->print(text);
         islong = false;
     }

@@ -7,7 +7,6 @@ unsigned long idleStartTime;
 unsigned long errorStartTime;
 long lastSensorCheckSec = -1;
 long lastErrorCheckSec  = -1;
-
 int dayStartHour;
 int nightStartHour;
 bool daytime;
