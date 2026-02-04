@@ -1,9 +1,9 @@
 # ENEL200 Final Project
 
 ## Authors
-- Luke Jones (ljo113)
-* Gabby Macdonald (gma171)
-+ Mitchell Aramowicz (mar262)
+- Luke Jones
+* Gabby Macdonald
++ Mitchell Aramowicz
 
 ## About This Project
 This Plant Life Monitor (PLM) has been designed to help prevent the avoidable deaths of indoor
